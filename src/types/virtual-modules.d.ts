@@ -4,7 +4,7 @@ declare module '@/db/supabase' {
   export const supabase: ReturnType<typeof import('@supabase/supabase-js').createClient>;
 }
 
-declare module '@/types/types' {
+declare module '@/db/api' {
   export interface Profile {
     [key: string]: unknown;
   }

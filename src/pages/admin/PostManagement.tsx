@@ -1,0 +1,408 @@
+import { useEffect, useState } from 'react';
+import { api } from '@/db/api';
+import type { Post } from '@/db/api';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogDescription } from '@/components/ui/dialog';
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Switch } from '@/components/ui/switch';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import * as z from 'zod';
+import { toast } from 'sonner';
+import { Plus, Edit, Trash2, Search, Filter, Loader2, Image as ImageIcon } from 'lucide-react';
+import { formatDate, slugify } from '@/lib/utils';
+import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/db/supabase';
+
+const postSchema = z.object({
+  title: z.string().min(5, 'Judul minimal 5 karakter'),
+  content: z.string().min(20, 'Konten minimal 20 karakter'),
+  excerpt: z.string().optional().default(''),
+  type: z.enum(['pmi_news', 'activity', 'inspiration', 'opinion', 'organization']),
+  category: z.string().min(2, 'Kategori minimal 2 karakter'),
+  image_url: z.string().optional().default(''),
+  is_published: z.boolean().default(false),
+});
+
+type PostFormValues = z.infer<typeof postSchema>;
+
+export default function PostManagement() {
+  const [posts, setPosts] = useState<Post[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [editingPost, setEditingPost] = useState<Post | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+  const { user } = useAuth();
+
+  const form = useForm<PostFormValues>({
+    resolver: zodResolver(postSchema),
+    defaultValues: {
+      title: '',
+      content: '',
+      excerpt: '',
+      type: 'pmi_news',
+      category: '',
+      image_url: '',
+      is_published: false,
+    },
+  });
+
+  const fetchPosts = async () => {
+    setLoading(true);
+    try {
+      const data = await api.posts.list({ limit: 100, publishedOnly: false });
+      setPosts(data);
+    } catch (err) {
+      toast.error('Gagal memuat daftar konten');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchPosts();
+  }, []);
+
+  const handleEdit = (post: Post) => {
+    setEditingPost(post);
+    form.reset({
+      title: post.title,
+      content: post.content || '',
+      excerpt: post.excerpt || '',
+      type: post.type,
+      category: post.category || '',
+      image_url: post.image_url || '',
+      is_published: post.is_published,
+    });
+    setIsDialogOpen(true);
+  };
+
+  const handleDelete = async (id: string) => {
+    if (!confirm('Apakah Anda yakin ingin menghapus konten ini?')) return;
+    try {
+      await api.posts.delete(id);
+      toast.success('Konten berhasil dihapus');
+      fetchPosts();
+    } catch (err) {
+      toast.error('Gagal menghapus konten');
+    }
+  };
+
+  const onSubmit = async (values: PostFormValues) => {
+    setSubmitting(true);
+    try {
+      const slug = slugify(values.title);
+      const postData: Partial<Post> = {
+        title: values.title,
+        content: values.content,
+        excerpt: values.excerpt,
+        type: values.type,
+        category: values.category,
+        image_url: values.image_url,
+        is_published: values.is_published,
+        slug,
+        author_id: user?.id,
+        published_at: values.is_published ? new Date().toISOString() : null,
+      };
+
+      if (editingPost) {
+        await api.posts.update(editingPost.id, postData);
+        toast.success('Konten berhasil diperbarui');
+      } else {
+        await api.posts.create(postData);
+        toast.success('Konten berhasil dibuat');
+      }
+      setIsDialogOpen(false);
+      setEditingPost(null);
+      form.reset();
+      fetchPosts();
+    } catch (err: any) {
+      console.error(err);
+      toast.error(err.message || 'Gagal menyimpan konten');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  // Image Upload Handler
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 1024 * 1024) {
+      toast.error('Ukuran file maksimal 1MB');
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      const fileName = `${Date.now()}-${file.name.replace(/[^a-zA-Z0-9.]/g, '')}`;
+      const { data, error } = await supabase.storage
+        .from('app-9wnpatirc0e9_pmi_images')
+        .upload(fileName, file);
+
+      if (error) throw error;
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('app-9wnpatirc0e9_pmi_images')
+        .getPublicUrl(fileName);
+
+      form.setValue('image_url', publicUrl);
+      toast.success('Gambar berhasil diunggah');
+    } catch (err) {
+      toast.error('Gagal mengunggah gambar');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <div className="space-y-6 pb-20">
+      <div className="flex justify-between items-center">
+        <h2 className="text-2xl font-bold text-primary">Kelola Konten</h2>
+        <Dialog open={isDialogOpen} onOpenChange={(open) => {
+          setIsDialogOpen(open);
+          if (!open) {
+            setEditingPost(null);
+            form.reset({
+              title: '',
+              content: '',
+              excerpt: '',
+              type: 'pmi_news',
+              category: '',
+              image_url: '',
+              is_published: false,
+            });
+          }
+        }}>
+          <DialogTrigger asChild>
+            <Button className="bg-primary text-white hover:bg-primary/90">
+              <Plus className="mr-2 h-4 w-4" /> Tambah Konten Baru
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>{editingPost ? 'Edit Konten' : 'Tambah Konten Baru'}</DialogTitle>
+              <DialogDescription>Isi detail konten di bawah ini. Judul akan otomatis diubah menjadi slug URL.</DialogDescription>
+            </DialogHeader>
+            <Form {...(form as any)}>
+              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6 py-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <FormField
+                    control={form.control as any}
+                    name="title"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Judul Konten</FormLabel>
+                        <FormControl>
+                          <Input placeholder="Judul berita/opini..." {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <div className="grid grid-cols-2 gap-4">
+                    <FormField
+                      control={form.control as any}
+                      name="type"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Tipe</FormLabel>
+                          <Select onValueChange={field.onChange} defaultValue={field.value}>
+                            <FormControl>
+                              <SelectTrigger>
+                                <SelectValue placeholder="Pilih Tipe" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              <SelectItem value="pmi_news">Berita PMI</SelectItem>
+                              <SelectItem value="activity">Kegiatan</SelectItem>
+                              <SelectItem value="inspiration">Inspirasi</SelectItem>
+                              <SelectItem value="opinion">Opini</SelectItem>
+                              <SelectItem value="organization">Organisasi</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control as any}
+                      name="category"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Kategori</FormLabel>
+                          <FormControl>
+                            <Input placeholder="Kebijakan/Hukum..." {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+                </div>
+
+                <FormField
+                  control={form.control as any}
+                  name="excerpt"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Ringkasan (Excerpt)</FormLabel>
+                      <FormControl>
+                        <Textarea placeholder="Ringkasan singkat untuk tampilan kartu..." className="h-20" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control as any}
+                  name="content"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Konten Lengkap</FormLabel>
+                      <FormControl>
+                        <Textarea placeholder="Tulis isi konten secara mendalam..." className="min-h-[300px]" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-end">
+                  <FormField
+                    control={form.control as any}
+                    name="image_url"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>URL Gambar (atau Unggah)</FormLabel>
+                        <div className="flex gap-2">
+                          <FormControl>
+                            <Input placeholder="https://..." {...field} />
+                          </FormControl>
+                          <div className="relative">
+                            <Input
+                              type="file"
+                              className="hidden"
+                              id="image-upload"
+                              accept="image/*"
+                              onChange={handleImageUpload}
+                            />
+                            <Button
+                              type="button"
+                              variant="outline"
+                              onClick={() => document.getElementById('image-upload')?.click()}
+                              disabled={submitting}
+                            >
+                              <Plus className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </div>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control as any}
+                    name="is_published"
+                    render={({ field }) => (
+                      <FormItem className="flex items-center justify-between rounded-lg border p-3 shadow-sm bg-muted/30">
+                        <div className="space-y-0.5">
+                          <FormLabel>Publikasikan Langsung</FormLabel>
+                          <div className="text-[10px] text-muted-foreground">Aktifkan agar konten muncul di website publik.</div>
+                        </div>
+                        <FormControl>
+                          <Switch
+                            checked={field.value}
+                            onCheckedChange={field.onChange}
+                          />
+                        </FormControl>
+                      </FormItem>
+                    )}
+                  />
+                </div>
+
+                <DialogFooter>
+                  <Button type="submit" disabled={submitting} className="w-full md:w-auto h-12 px-12">
+                    {submitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : editingPost ? 'Perbarui Konten' : 'Simpan Konten'}
+                  </Button>
+                </DialogFooter>
+              </form>
+            </Form>
+          </DialogContent>
+        </Dialog>
+      </div>
+
+      <div className="rounded-xl border bg-background shadow-md overflow-hidden">
+        <Table>
+          <TableHeader className="bg-muted/50">
+            <TableRow>
+              <TableHead className="w-[300px]">Judul</TableHead>
+              <TableHead>Tipe</TableHead>
+              <TableHead>Kategori</TableHead>
+              <TableHead>Status</TableHead>
+              <TableHead>Tanggal</TableHead>
+              <TableHead className="text-right">Aksi</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {loading ? (
+              <TableRow>
+                <TableCell colSpan={6} className="text-center py-20 animate-pulse">Memuat data...</TableCell>
+              </TableRow>
+            ) : posts.length > 0 ? (
+              posts.map((post) => (
+                <TableRow key={post.id} className="hover:bg-muted/30 transition-colors">
+                  <TableCell className="font-medium">
+                    <div className="flex items-center gap-3">
+                      {post.image_url ? (
+                        <div className="w-10 h-10 rounded overflow-hidden bg-muted flex-shrink-0">
+                          <img src={post.image_url} alt="" className="w-full h-full object-cover" />
+                        </div>
+                      ) : (
+                        <div className="w-10 h-10 rounded bg-muted flex items-center justify-center flex-shrink-0">
+                          <ImageIcon className="h-4 w-4 text-muted-foreground" />
+                        </div>
+                      )}
+                      <span className="line-clamp-1">{post.title}</span>
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <Badge variant="outline" className="text-[10px] uppercase">{post.type.replace('_', ' ')}</Badge>
+                  </TableCell>
+                  <TableCell>{post.category}</TableCell>
+                  <TableCell>
+                    {post.is_published ? (
+                      <Badge className="bg-green-100 text-green-800 hover:bg-green-100 border-green-200">Terbit</Badge>
+                    ) : (
+                      <Badge variant="secondary">Draf</Badge>
+                    )}
+                  </TableCell>
+                  <TableCell className="text-xs text-muted-foreground">{formatDate(post.created_at)}</TableCell>
+                  <TableCell className="text-right space-x-2">
+                    <Button variant="ghost" size="icon" onClick={() => handleEdit(post)} className="text-blue-600 hover:text-blue-700 hover:bg-blue-50">
+                      <Edit className="h-4 w-4" />
+                    </Button>
+                    <Button variant="ghost" size="icon" onClick={() => handleDelete(post.id)} className="text-red-600 hover:text-red-700 hover:bg-red-50">
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </TableCell>
+                </TableRow>
+              ))
+            ) : (
+              <TableRow>
+                <TableCell colSpan={6} className="text-center py-20 text-muted-foreground">Belum ada konten.</TableCell>
+              </TableRow>
+            )}
+          </TableBody>
+        </Table>
+      </div>
+    </div>
+  );
+}

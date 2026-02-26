@@ -1,38 +1,30 @@
 import { Link } from "react-router-dom";
 import PageMeta from "@/components/common/PageMeta";
+import { Button } from "@/components/ui/button";
 
 export default function NotFound() {
   return (
     <>
-      <PageMeta title="Page Not Found" description="" />
-      <div className="relative flex flex-col items-center justify-center min-h-screen p-6 overflow-hidden z-1">
-        <div className="mx-auto w-full max-w-[242px] text-center sm:max-w-[472px]">
-          <h1 className="mb-8 font-bold text-gray-800 text-title-md dark:text-white/90 xl:text-title-2xl">
-            ERROR
+      <PageMeta title="Halaman Tidak Ditemukan" description="" />
+      <div className="relative flex flex-col items-center justify-center min-h-screen p-6 bg-muted/30">
+        <div className="mx-auto w-full max-w-[472px] text-center space-y-8">
+          <h1 className="text-8xl font-black text-primary/20 leading-none">
+            404
           </h1>
 
-          <img src="/images/error/404.svg" alt="404" className="dark:hidden" />
-          <img
-            src="/images/error/404-dark.svg"
-            alt="404"
-            className="hidden dark:block"
-          />
+          <div className="space-y-4">
+            <h2 className="text-2xl font-bold text-primary italic uppercase tracking-widest">Halaman Tidak Ditemukan</h2>
+            <p className="text-base text-muted-foreground sm:text-lg">
+              Maaf, halaman yang Anda cari mungkin telah dihapus, dipindahkan, atau tidak pernah ada. Silakan periksa kembali URL Anda.
+            </p>
+          </div>
 
-          <p className="mt-10 mb-6 text-base text-gray-700 dark:text-gray-400 sm:text-lg">
-            The page may have been deleted or does not exist. Please check the
-            URL is correct.
-          </p>
-
-          <Link
-            to="/"
-            className="inline-flex items-center justify-center rounded-lg border border-gray-300 bg-white px-5 py-3.5 text-sm font-medium text-gray-700 shadow-theme-xs hover:bg-gray-50 hover:text-gray-800 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-white/[0.03] dark:hover:text-gray-200"
-          >
-            Back to home
-          </Link>
+          <Button asChild size="lg" className="bg-primary hover:bg-primary/90">
+            <Link to="/">Kembali ke Beranda</Link>
+          </Button>
         </div>
-        {/* <!-- Footer --> */}
-        <p className="absolute text-sm text-center text-gray-500 -translate-x-1/2 bottom-6 left-1/2 dark:text-gray-400">
-          &copy; {new Date().getFullYear()}
+        <p className="absolute text-xs text-center text-muted-foreground bottom-6 left-0 right-0">
+          &copy; 2026 NU Malaysia Media & PMI Advocacy
         </p>
       </div>
     </>
