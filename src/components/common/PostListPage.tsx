@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
-import { api } from '@/db/api';
-import type { Post } from '@/db/api';
+import { api } from '@/db';
+import type { Post } from '@/db';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';

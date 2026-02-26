@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
-import { api } from '@/db/api';
-import type { Post } from '@/db/api';
+import { api } from '@/db';
+import type { Post } from '@/db';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -18,13 +18,23 @@ import { Plus, Edit, Trash2, Search, Filter, Loader2, Image as ImageIcon } from 
 import { formatDate, slugify } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/db/supabase';
+import { sanitizeInput, sanitizeHtml, sanitizeUrl, validateFile, sanitizeFilename } from '@/lib/security';
 
 const postSchema = z.object({
-  title: z.string().min(5, 'Judul minimal 5 karakter'),
-  content: z.string().min(20, 'Konten minimal 20 karakter'),
-  excerpt: z.string().optional().default(''),
+  title: z.string()
+    .min(5, 'Judul minimal 5 karakter')
+    .max(200, 'Judul maksimal 200 karakter'),
+  content: z.string()
+    .min(20, 'Konten minimal 20 karakter')
+    .max(50000, 'Konten terlalu panjang'),
+  excerpt: z.string()
+    .max(500, 'Ringkasan maksimal 500 karakter')
+    .optional()
+    .default(''),
   type: z.enum(['pmi_news', 'activity', 'inspiration', 'opinion', 'organization']),
-  category: z.string().min(2, 'Kategori minimal 2 karakter'),
+  category: z.string()
+    .min(2, 'Kategori minimal 2 karakter')
+    .max(50, 'Kategori maksimal 50 karakter'),
   image_url: z.string().optional().default(''),
   is_published: z.boolean().default(false),
 });
@@ -40,7 +50,7 @@ export default function PostManagement() {
   const { user } = useAuth();
 
   const form = useForm<PostFormValues>({
-    resolver: zodResolver(postSchema),
+    resolver: zodResolver(postSchema) as any,
     defaultValues: {
       title: '',
       content: '',
@@ -96,14 +106,21 @@ export default function PostManagement() {
   const onSubmit = async (values: PostFormValues) => {
     setSubmitting(true);
     try {
-      const slug = slugify(values.title);
+      // Sanitize all inputs
+      const sanitizedTitle = sanitizeInput(values.title);
+      const sanitizedContent = sanitizeHtml(values.content);
+      const sanitizedExcerpt = sanitizeInput(values.excerpt || '');
+      const sanitizedCategory = sanitizeInput(values.category);
+      const sanitizedImageUrl = sanitizeUrl(values.image_url || '');
+
+      const slug = slugify(sanitizedTitle);
       const postData: Partial<Post> = {
-        title: values.title,
-        content: values.content,
-        excerpt: values.excerpt,
+        title: sanitizedTitle,
+        content: sanitizedContent,
+        excerpt: sanitizedExcerpt,
         type: values.type,
-        category: values.category,
-        image_url: values.image_url,
+        category: sanitizedCategory,
+        image_url: sanitizedImageUrl,
         is_published: values.is_published,
         slug,
         author_id: user?.id,
@@ -129,19 +146,29 @@ export default function PostManagement() {
     }
   };
 
-  // Image Upload Handler
+  // Image Upload Handler with validation
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    if (file.size > 1024 * 1024) {
-      toast.error('Ukuran file maksimal 1MB');
+    // Validate file
+    const validation = validateFile(file, {
+      maxSize: 1024 * 1024, // 1MB
+      allowedTypes: ['image/jpeg', 'image/png', 'image/webp', 'image/gif']
+    });
+
+    if (!validation.valid) {
+      toast.error(validation.error);
+      e.target.value = '';
       return;
     }
 
     setSubmitting(true);
     try {
-      const fileName = `${Date.now()}-${file.name.replace(/[^a-zA-Z0-9.]/g, '')}`;
+      // Sanitize filename
+      const safeFilename = sanitizeFilename(file.name);
+      const fileName = `${Date.now()}-${safeFilename}`;
+      
       const { data, error } = await supabase.storage
         .from('app-9wnpatirc0e9_pmi_images')
         .upload(fileName, file);
@@ -191,7 +218,7 @@ export default function PostManagement() {
               <DialogDescription>Isi detail konten di bawah ini. Judul akan otomatis diubah menjadi slug URL.</DialogDescription>
             </DialogHeader>
             <Form {...(form as any)}>
-              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6 py-4">
+              <form onSubmit={form.handleSubmit(onSubmit as any)} className="space-y-6 py-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <FormField
                     control={form.control as any}

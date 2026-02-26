@@ -20,7 +20,9 @@ Reference website: https://ansor.id/
 - Featured news section
 - Breaking news / hot issues section
 - Highlights of NU activities and affiliated organizations (Banom)
-- Call-to-action button: \"Laporkan Masalah PMI\" (Report PMI Issues)
+- Call-to-action button: Laporkan Masalah PMI (Report PMI Issues)
+- Navigation menu optimized for desktop display with horizontal scrolling capability to prevent overflow
+- Login feature replaced with icon representation
 
 #### Page 2: Berita PMI/Isu Migran (PMI News/Migrant Issues)
 - PMI case reports
@@ -49,7 +51,7 @@ Reference website: https://ansor.id/
 - Legal practitioners
 
 #### Page 7: Advokasi & Pengaduan Layanan PMI (Advocacy & PMI Complaint Services)
-- Complaint form
+- Complaint form with input validation to prevent XSS and SQL injection attacks
 - Volunteer contact information
 - Assistance workflow
 - Legal disclaimer
@@ -58,6 +60,7 @@ Reference website: https://ansor.id/
 - PMI and migration statistics
 - Issue maps and trend graphs
 - NU activity infographics
+- Interactive geotagging feature: clickable map markers that display detailed data when selected
 
 #### Page 9: Tentang Kami (About Us)
 - Vision and mission
@@ -78,6 +81,17 @@ Reference website: https://ansor.id/
 - User management for content administrators
 - Content categorization and tagging
 - Draft and published content management
+- Web content management system for all website pages
+
+### 2.3 Security & User Experience
+- Input validation across all forms to prevent XSS, SQL injection, and other security vulnerabilities
+- URL routing with proper error handling to prevent users from accessing incorrect or non-existent URLs
+- 404 error page with helpful navigation options
+
+### 2.4 Responsive Design
+- Desktop navigation menu with simplified layout and horizontal scrolling capability
+- Icon-based login feature for cleaner interface
+- Optimized menu structure to prevent overflow and maintain visual organization
 
 ## 3. Reference Files
 1. Research Report: /workspace/app-9wnpatirc0e9/docs/report.md

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { NavLink, Link, useNavigate } from 'react-router-dom';
-import { Menu, X, User, LogOut, ChevronDown } from 'lucide-react';
+import { Menu, X, User, LogOut, ChevronDown, LogIn } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
 import {
@@ -10,17 +10,18 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 
 const NAV_ITEMS = [
   { name: 'Beranda', path: '/' },
-  { name: 'Berita PMI', path: '/berita' },
+  { name: 'Berita', path: '/berita' },
   { name: 'Organisasi', path: '/organisasi' },
   { name: 'Kegiatan', path: '/kegiatan' },
   { name: 'Inspirasi', path: '/inspirasi' },
   { name: 'Opini', path: '/opini' },
   { name: 'Advokasi', path: '/advokasi' },
   { name: 'Data', path: '/data' },
-  { name: 'Tentang Kami', path: '/tentang' },
+  { name: 'Tentang', path: '/tentang' },
   { name: 'Kontak', path: '/kontak' },
 ];
 
@@ -49,22 +50,25 @@ export function PublicLayout({ children }: { children: React.ReactNode }) {
             </div>
           </Link>
 
-          {/* Desktop Navigation */}
-          <nav className="hidden md:flex items-center space-x-1 lg:space-x-4">
-            {NAV_ITEMS.map((item) => (
-              <NavLink
-                key={item.path}
-                to={item.path}
-                className={({ isActive }) =>
-                  `px-3 py-2 text-sm font-medium transition-colors hover:text-primary ${
-                    isActive ? 'text-primary border-b-2 border-primary' : 'text-muted-foreground'
-                  }`
-                }
-              >
-                {item.name}
-              </NavLink>
-            ))}
-          </nav>
+          {/* Desktop Navigation - Scrollable */}
+          <ScrollArea className="hidden md:block max-w-2xl">
+            <nav className="flex items-center space-x-1">
+              {NAV_ITEMS.map((item) => (
+                <NavLink
+                  key={item.path}
+                  to={item.path}
+                  className={({ isActive }) =>
+                    `px-3 py-2 text-sm font-medium transition-colors hover:text-primary whitespace-nowrap ${
+                      isActive ? 'text-primary border-b-2 border-primary' : 'text-muted-foreground'
+                    }`
+                  }
+                >
+                  {item.name}
+                </NavLink>
+              ))}
+            </nav>
+            <ScrollBar orientation="horizontal" className="invisible" />
+          </ScrollArea>
 
           <div className="flex items-center space-x-2">
             {user ? (
@@ -85,8 +89,10 @@ export function PublicLayout({ children }: { children: React.ReactNode }) {
                 </DropdownMenuContent>
               </DropdownMenu>
             ) : (
-              <Button asChild variant="ghost" size="sm" className="hidden md:flex">
-                <Link to="/login">Masuk</Link>
+              <Button asChild variant="ghost" size="icon" className="hidden md:flex h-8 w-8">
+                <Link to="/login">
+                  <LogIn className="h-5 w-5" />
+                </Link>
               </Button>
             )}
 

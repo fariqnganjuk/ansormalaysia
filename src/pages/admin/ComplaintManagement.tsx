@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
-import { api } from '@/db/api';
-import type { Complaint } from '@/db/api';
+import { api } from '@/db';
+import type { Complaint } from '@/db';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';

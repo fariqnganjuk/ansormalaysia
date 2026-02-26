@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { api } from '@/db/api';
+import { api } from '@/db';
 import { Button } from '@/components/ui/button';
 import {
   Form,
@@ -18,11 +18,19 @@ import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
 import { Shield, CheckCircle2, AlertCircle, Phone, Mail, MapPin } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { sanitizeInput, validateEmail, validatePhone, rateLimiter } from '@/lib/security';
 
 const formSchema = z.object({
-  name: z.string().min(2, { message: 'Nama harus minimal 2 karakter.' }),
-  contact: z.string().min(5, { message: 'Kontak (HP/Email) harus valid.' }),
-  issue: z.string().min(10, { message: 'Masalah harus dijelaskan minimal 10 karakter.' }),
+  name: z.string()
+    .min(2, { message: 'Nama harus minimal 2 karakter.' })
+    .max(100, { message: 'Nama terlalu panjang.' })
+    .regex(/^[a-zA-Z\s.'-]+$/, { message: 'Nama hanya boleh berisi huruf dan spasi.' }),
+  contact: z.string()
+    .min(5, { message: 'Kontak (HP/Email) harus valid.' })
+    .max(100, { message: 'Kontak terlalu panjang.' }),
+  issue: z.string()
+    .min(10, { message: 'Masalah harus dijelaskan minimal 10 karakter.' })
+    .max(2000, { message: 'Deskripsi masalah terlalu panjang (maksimal 2000 karakter).' }),
 });
 
 export default function Advocacy() {
@@ -39,12 +47,40 @@ export default function Advocacy() {
   });
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
+    // Rate limiting check
+    if (!rateLimiter.canAttempt('complaint-form', 3, 60000)) {
+      toast.error('Terlalu banyak percobaan. Silakan tunggu sebentar.');
+      return;
+    }
+
+    // Validate contact (email or phone)
+    const isEmail = values.contact.includes('@');
+    const isPhone = /^[0-9+\s-]+$/.test(values.contact);
+    
+    if (isEmail && !validateEmail(values.contact)) {
+      toast.error('Format email tidak valid.');
+      return;
+    }
+    
+    if (isPhone && !validatePhone(values.contact.replace(/[\s-]/g, ''))) {
+      toast.error('Format nomor telepon tidak valid.');
+      return;
+    }
+
     setIsSubmitting(true);
     try {
-      await api.complaints.create(values);
+      // Sanitize inputs before sending
+      const sanitizedData = {
+        name: sanitizeInput(values.name),
+        contact: sanitizeInput(values.contact),
+        issue: sanitizeInput(values.issue),
+      };
+
+      await api.complaints.create(sanitizedData);
       setIsSuccess(true);
       toast.success('Pengaduan berhasil dikirim! Tim kami akan segera menghubungi Anda.');
       form.reset();
+      rateLimiter.reset('complaint-form');
     } catch (err) {
       console.error('Failed to submit complaint:', err);
       toast.error('Gagal mengirim pengaduan. Silakan coba lagi nanti.');

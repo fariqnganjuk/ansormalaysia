@@ -45,13 +45,18 @@ export interface Organization {
   created_at: string;
 }
 
-export interface Infographic {
+export type Infographic = {
   id: string;
   title: string;
   image_url: string;
   description: string | null;
+  location_name: string | null;
+  latitude: number | null;
+  longitude: number | null;
+  data_value: number | null;
+  data_type: string | null;
   created_at: string;
-}
+};
 
 // API functions
 export const api = {
