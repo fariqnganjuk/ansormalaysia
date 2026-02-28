@@ -1,4 +1,8 @@
 # Welcome to Your Miaoda Project
+Miaoda Application Link URL
+    URL:https://medo.dev/projects/app-9wnpatirc0e9
+
+# Welcome to Your Miaoda Project
 
 ## Project Info
 
@@ -35,7 +39,77 @@
 
 ## Tech Stack
 
-Vite, TypeScript, React, Supabase
+Vite, TypeScript, React, PHP, MySQL
+
+## Backend PHP + MySQL Setup (XAMPP)
+
+1. Import schema MySQL dari `backend/database/schema.sql` ke database MySQL Anda.
+2. Pastikan folder project berada di dalam `htdocs`, contoh: `C:/xampp/htdocs/ANSORMALAYSIA`.
+3. Jalankan Apache + MySQL dari XAMPP.
+4. Set environment variable backend (opsional, default sudah disediakan di `backend/config.php`):
+
+```
+MYSQL_HOST=127.0.0.1
+MYSQL_PORT=3306
+MYSQL_DATABASE=ansormalaysia_app
+MYSQL_USER=root
+MYSQL_PASSWORD=
+FRONTEND_ORIGIN=http://localhost:5173
+
+# Optional: sumber data eksternal KP2MI (Malaysia)
+# Jika tidak diisi / gagal diakses, sistem otomatis fallback ke data internal (tabel infographics)
+KP2MI_MALAYSIA_DATA_URL=
+KP2MI_CACHE_TTL_SECONDS=1800
+
+# Optional (Tahap 2): sesuaikan struktur payload KP2MI yang nested
+# Contoh: response.data.items -> isi dengan "data.items"
+KP2MI_RESPONSE_PATH=
+
+# Optional (Tahap 2): override field mapping, dipisah koma,
+# mendukung nested key (contoh: negara.kode, coordinate.lat)
+KP2MI_FIELD_TITLE=title,judul,name,nama
+KP2MI_FIELD_IMAGE_URL=image_url,image,gambar,thumbnail,img_url
+KP2MI_FIELD_DESCRIPTION=description,deskripsi,desc,ringkasan
+KP2MI_FIELD_LOCATION=location_name,lokasi,wilayah,state,province,kota,city
+KP2MI_FIELD_DATA_TYPE=data_type,type,kategori,metric
+KP2MI_FIELD_LATITUDE=latitude,lat,coordinate.lat
+KP2MI_FIELD_LONGITUDE=longitude,lng,lon,coordinate.lng
+KP2MI_FIELD_DATA_VALUE=data_value,value,jumlah,total,count
+KP2MI_FIELD_CREATED_AT=created_at,updated_at,tanggal,date
+KP2MI_FIELD_COUNTRY=country,country_name,negara,kode_negara,countryCode,negara.kode
+KP2MI_FIELD_COUNTRY_CODE=country_code,countryCode,kode_negara,negara.kode
+```
+
+5. Frontend akan membaca endpoint API dari `VITE_API_BASE_URL`.
+    Gunakan `.env` di root project:
+
+```
+VITE_API_BASE_URL=http://localhost/ANSORMALAYSIA/backend
+```
+
+## Data Bootstrap (Opsional)
+
+## Integrasi Data KP2MI (Malaysia)
+
+- Endpoint publik aplikasi untuk konsumsi frontend: `GET /backend/index.php?route=/infographics/public`
+- Paksa refresh cache eksternal: `GET /backend/index.php?route=/infographics/public&refresh=1`
+- Strategi data: `external-first` (KP2MI) lalu `internal-fallback` (database lokal)
+- Cache file disimpan di `backend/.cache/kp2mi-malaysia-infographics.json`
+- Endpoint admin `GET /infographics` tetap data internal agar CRUD admin tidak terganggu
+
+### 1) Seed data awal
+
+Jalankan setelah `schema.sql`:
+
+```
+mysql -u root -p ansormalaysia_app < backend/database/seed.sql
+```
+
+### 2) Buat / reset akun admin lokal
+
+```
+php backend/database/create_admin.php admin passwordku123
+```
 
 ## Development Guidelines
 
@@ -84,7 +158,7 @@ Alternatively, use the official installer: Visit the Node.js official website. D
 
 ### How to develop backend services?
 
-Configure environment variables and install relevant dependencies.If you need to use a database, please use the official version of Supabase.
+Configure environment variables and use MySQL as the data store for the PHP backend.
 
 ## Learn More
 

@@ -15,6 +15,9 @@ export default function Contact() {
   return (
     <div className="container mx-auto px-4 py-12 pb-24 max-w-6xl space-y-16">
       <div className="text-center space-y-4">
+        <div className="flex justify-center">
+          <span className="inline-flex items-center rounded-md border px-3 py-1 text-xs font-medium text-muted-foreground">Layanan Redaksi & Kolaborasi PMI</span>
+        </div>
         <h1 className="text-4xl font-bold text-primary">Kontak & Kolaborasi</h1>
         <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
           Terhubung dengan kami untuk informasi lebih lanjut, kiriman tulisan, kerjasama media, atau dukungan kemanusiaan.
@@ -129,6 +132,23 @@ export default function Contact() {
               </div>
             </div>
           </div>
+
+          <Card className="mt-8">
+            <CardHeader>
+              <CardTitle>Media Partner</CardTitle>
+              <CardDescription>Kolaborasi publikasi bersama mitra komunitas dan organisasi.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                {['NU Online', 'TVNU', 'Ansor Malaysia', 'Komunitas PMI'].map((partner) => (
+                  <div key={partner} className="h-12 rounded-lg border bg-muted/30 flex items-center justify-center text-xs font-semibold text-muted-foreground">
+                    {partner}
+                  </div>
+                ))}
+              </div>
+              <p className="text-xs text-muted-foreground">Ingin menjadi media partner? Hubungi redaksi melalui formulir di atas.</p>
+            </CardContent>
+          </Card>
         </div>
       </div>
 

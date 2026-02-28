@@ -5,7 +5,7 @@ import type { Post } from '@/db';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { ArrowRight, MessageSquare, Shield, Users, Info } from 'lucide-react';
+import { ArrowRight, Shield, Users, Info, Flame } from 'lucide-react';
 import { formatDate } from '@/lib/utils';
 
 export default function Home() {
@@ -32,12 +32,12 @@ export default function Home() {
   }, []);
 
   return (
-    <div className="flex flex-col gap-12 pb-12">
+    <div className="space-y-14 pb-14">
       {/* Hero Section */}
       <section className="relative h-[500px] flex items-center justify-center overflow-hidden">
         <div className="absolute inset-0 z-0">
           <img
-            src="https://miaoda-site-img.s3cdn.medo.dev/images/KLing_4f103042-a6c9-445a-8ab7-8da4f542be03.jpg"
+            src="/uploads/1772313452-af896b001728.jpeg"
             alt="Kuala Lumpur"
             className="w-full h-full object-cover brightness-50"
           />
@@ -64,23 +64,23 @@ export default function Home() {
       {/* Featured News */}
       <section className="container mx-auto px-4">
         <div className="flex items-center justify-between mb-8">
-          <h2 className="text-3xl font-bold border-l-4 border-primary pl-4">Berita PMI Terkini</h2>
+          <h2 className="text-2xl md:text-3xl font-bold border-l-4 border-primary pl-4">Berita PMI Terkini</h2>
           <Button asChild variant="link">
             <Link to="/berita">Lihat Semua <ArrowRight className="ml-2 h-4 w-4" /></Link>
           </Button>
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {loading ? (
             Array(3).fill(0).map((_, i) => (
               <Card key={i} className="animate-pulse bg-muted h-[400px]" />
             ))
-          ) : (
+          ) : featuredNews.length > 0 ? (
             featuredNews.map((post) => (
-              <Card key={post.id} className="overflow-hidden flex flex-col hover:shadow-lg transition-shadow">
-                <div className="aspect-video overflow-hidden">
-                  <img src={post.image_url || 'https://via.placeholder.com/400x225'} alt={post.title} className="w-full h-full object-cover" />
+              <Card key={post.id} className="overflow-hidden flex h-full flex-col hover:shadow-lg transition-shadow">
+                <div className="aspect-video overflow-hidden bg-muted/40 p-2">
+                  <img src={post.image_url || 'https://via.placeholder.com/400x225'} alt={post.title} className="w-full h-full object-contain" />
                 </div>
-                <CardHeader>
+                <CardHeader className="space-y-3 pb-3">
                   <div className="flex items-center gap-2 mb-2">
                     <Badge variant="secondary">{post.category}</Badge>
                     <span className="text-xs text-muted-foreground">{formatDate(post.published_at || post.created_at)}</span>
@@ -92,13 +92,75 @@ export default function Home() {
                 <CardContent className="flex-1">
                   <p className="text-sm text-muted-foreground line-clamp-3">{post.excerpt}</p>
                 </CardContent>
-                <CardFooter>
+                <CardFooter className="pt-0">
                   <Button asChild variant="ghost" className="w-full text-primary">
                     <Link to={`/post/${post.slug}`}>Baca Selengkapnya</Link>
                   </Button>
                 </CardFooter>
               </Card>
             ))
+          ) : (
+            <div className="md:col-span-3 rounded-xl border border-dashed p-10 text-center text-sm text-muted-foreground">
+              Belum ada berita utama untuk ditampilkan.
+            </div>
+          )}
+        </div>
+      </section>
+
+      {/* Breaking Issues */}
+      <section className="container mx-auto px-4">
+        <div className="flex items-center gap-2 mb-5">
+          <Flame className="h-5 w-5 text-destructive" />
+          <h2 className="text-2xl md:text-3xl font-bold">Breaking / Isu Hangat PMI</h2>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {(loading ? [] : featuredNews).slice(0, 3).map((post) => (
+            <Link
+              key={`breaking-${post.id}`}
+              to={`/post/${post.slug}`}
+              className="rounded-xl border bg-card p-4 min-h-[110px] hover:border-primary hover:bg-primary/5 transition-colors"
+            >
+              <p className="text-[11px] font-semibold uppercase tracking-wide text-primary mb-1">Isu Hangat</p>
+              <p className="text-sm font-semibold line-clamp-2">{post.title}</p>
+            </Link>
+          ))}
+          {!loading && featuredNews.length === 0 && (
+            <div className="md:col-span-3 rounded-xl border border-dashed p-6 text-center text-sm text-muted-foreground">
+              Belum ada isu hangat yang dipublikasikan.
+            </div>
+          )}
+        </div>
+      </section>
+
+      {/* Activities Section */}
+      <section className="container mx-auto px-4">
+        <div className="flex items-center justify-between mb-8">
+          <h2 className="text-2xl md:text-3xl font-bold border-l-4 border-primary pl-4">Kegiatan Banom & Organisasi</h2>
+          <Button asChild variant="link">
+            <Link to="/kegiatan">Semua Kegiatan <ArrowRight className="ml-2 h-4 w-4" /></Link>
+          </Button>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+          {loading ? (
+            Array(4).fill(0).map((_, i) => <Card key={i} className="animate-pulse bg-muted h-[300px]" />)
+          ) : activities.length > 0 ? (
+            activities.map((act) => (
+              <Card key={act.id} className="group overflow-hidden h-full">
+                <div className="aspect-video overflow-hidden bg-muted/40 p-2">
+                  <img src={act.image_url || 'https://via.placeholder.com/400x225'} alt={act.title} className="w-full h-full object-contain transition-transform" />
+                </div>
+                <CardHeader className="p-4 space-y-2">
+                  <span className="text-xs text-primary font-bold">{act.category}</span>
+                  <CardTitle className="text-sm line-clamp-2 leading-snug">
+                    <Link to={`/post/${act.slug}`} className="hover:text-primary transition-colors">{act.title}</Link>
+                  </CardTitle>
+                </CardHeader>
+              </Card>
+            ))
+          ) : (
+            <div className="sm:col-span-2 lg:col-span-4 rounded-xl border border-dashed p-10 text-center text-sm text-muted-foreground">
+              Belum ada highlight kegiatan NU dan Banom.
+            </div>
           )}
         </div>
       </section>
@@ -133,35 +195,6 @@ export default function Home() {
               </Button>
             </div>
           </div>
-        </div>
-      </section>
-
-      {/* Activities Section */}
-      <section className="container mx-auto px-4">
-        <div className="flex items-center justify-between mb-8">
-          <h2 className="text-3xl font-bold border-l-4 border-primary pl-4">Kegiatan Banom & Organisasi</h2>
-          <Button asChild variant="link">
-            <Link to="/kegiatan">Semua Kegiatan <ArrowRight className="ml-2 h-4 w-4" /></Link>
-          </Button>
-        </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-          {loading ? (
-            Array(4).fill(0).map((_, i) => <Card key={i} className="animate-pulse bg-muted h-[300px]" />)
-          ) : (
-            activities.map((act) => (
-              <Card key={act.id} className="group overflow-hidden">
-                <div className="aspect-video overflow-hidden">
-                  <img src={act.image_url || 'https://via.placeholder.com/400x225'} alt={act.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
-                </div>
-                <CardHeader className="p-4">
-                  <span className="text-xs text-primary font-bold">{act.category}</span>
-                  <CardTitle className="text-sm line-clamp-2 leading-snug">
-                    <Link to={`/post/${act.slug}`} className="hover:text-primary transition-colors">{act.title}</Link>
-                  </CardTitle>
-                </CardHeader>
-              </Card>
-            ))
-          )}
         </div>
       </section>
     </div>

@@ -98,7 +98,7 @@
 ✅ Icon-based login button in navbar
 ✅ Scrollable desktop navigation
 ✅ Comprehensive XSS protection
-✅ SQL injection prevention through Supabase
+✅ SQL injection prevention through backend validation
 ✅ Rate limiting for forms
 ✅ File upload validation
 ✅ Interactive geolocation map

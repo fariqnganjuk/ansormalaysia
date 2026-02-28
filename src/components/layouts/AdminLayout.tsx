@@ -1,5 +1,5 @@
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { LayoutDashboard, FileText, MessageSquare, Users, LogOut, ChevronLeft, ChevronRight, Home, Menu } from 'lucide-react';
+import { LayoutDashboard, FileText, MessageSquare, Users, BarChart3, UserCog, LogOut, ChevronLeft, ChevronRight, Home, Menu } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
 import { cn } from '@/lib/utils';
@@ -8,7 +8,14 @@ import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 
 const ADMIN_NAV = [
   { name: 'Ringkasan', path: '/dashboard', icon: LayoutDashboard },
-  { name: 'Kelola Konten', path: '/dashboard/posts', icon: FileText },
+  { name: 'Semua Konten', path: '/dashboard/posts', icon: FileText },
+  { name: 'Kelola Berita', path: '/dashboard/posts/news', icon: FileText },
+  { name: 'Kelola Kegiatan', path: '/dashboard/posts/activities', icon: FileText },
+  { name: 'Kelola Inspirasi', path: '/dashboard/posts/inspirations', icon: FileText },
+  { name: 'Kelola Opini', path: '/dashboard/posts/opinions', icon: FileText },
+  { name: 'Kelola Organisasi', path: '/dashboard/organizations', icon: Users },
+  { name: 'Kelola Infografis', path: '/dashboard/infographics', icon: BarChart3 },
+  { name: 'Kelola Pengguna', path: '/dashboard/users', icon: UserCog },
   { name: 'Pengaduan PMI', path: '/dashboard/complaints', icon: MessageSquare },
 ];
 

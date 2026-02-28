@@ -65,8 +65,8 @@ export default function PostDetail() {
       </header>
 
       {post.image_url && (
-        <div className="aspect-video w-full overflow-hidden rounded-xl mb-12 shadow-md">
-          <img src={post.image_url} alt={post.title} className="w-full h-full object-cover" />
+        <div className="aspect-video w-full overflow-hidden rounded-xl mb-12 shadow-md bg-muted/40 p-3">
+          <img src={post.image_url} alt={post.title} className="w-full h-full object-contain" />
         </div>
       )}
 

@@ -15,7 +15,7 @@ export default function NotFound() {
           <div className="space-y-4">
             <h2 className="text-2xl font-bold text-primary italic uppercase tracking-widest">Halaman Tidak Ditemukan</h2>
             <p className="text-base text-muted-foreground sm:text-lg">
-              Maaf, halaman yang Anda cari mungkin telah dihapus, dipindahkan, atau tidak pernah ada. Silakan periksa kembali URL Anda.
+              Maaf, halaman yang Anda cari mungkin tidak pernah ada, Silakan kembali.
             </p>
           </div>
 

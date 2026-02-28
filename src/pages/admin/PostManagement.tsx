@@ -14,11 +14,10 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { toast } from 'sonner';
-import { Plus, Edit, Trash2, Search, Filter, Loader2, Image as ImageIcon } from 'lucide-react';
+import { Plus, Edit, Trash2, Loader2, Image as ImageIcon } from 'lucide-react';
 import { formatDate, slugify } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
-import { supabase } from '@/db/supabase';
-import { sanitizeInput, sanitizeHtml, sanitizeUrl, validateFile, sanitizeFilename } from '@/lib/security';
+import { sanitizeInput, sanitizeHtml, sanitizeUrl, validateFile } from '@/lib/security';
 
 const postSchema = z.object({
   title: z.string()
@@ -31,7 +30,7 @@ const postSchema = z.object({
     .max(500, 'Ringkasan maksimal 500 karakter')
     .optional()
     .default(''),
-  type: z.enum(['pmi_news', 'activity', 'inspiration', 'opinion', 'organization']),
+  type: z.enum(['pmi_news', 'activity', 'inspiration', 'opinion']),
   category: z.string()
     .min(2, 'Kategori minimal 2 karakter')
     .max(50, 'Kategori maksimal 50 karakter'),
@@ -41,13 +40,27 @@ const postSchema = z.object({
 
 type PostFormValues = z.infer<typeof postSchema>;
 
-export default function PostManagement() {
+const POST_TYPE_LABELS: Record<Post['type'], string> = {
+  pmi_news: 'Berita PMI',
+  activity: 'Kegiatan',
+  inspiration: 'Tokoh & Inspirasi',
+  opinion: 'Opini',
+};
+
+type PostManagementProps = {
+  fixedType?: Post['type'];
+  title?: string;
+};
+
+export default function PostManagement({ fixedType, title }: PostManagementProps) {
   const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingPost, setEditingPost] = useState<Post | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const { user } = useAuth();
+  const activeType = fixedType ?? 'pmi_news';
+  const pageTitle = title || (fixedType ? `Kelola ${POST_TYPE_LABELS[fixedType]}` : 'Kelola Semua Konten');
 
   const form = useForm<PostFormValues>({
     resolver: zodResolver(postSchema) as any,
@@ -55,7 +68,7 @@ export default function PostManagement() {
       title: '',
       content: '',
       excerpt: '',
-      type: 'pmi_news',
+      type: activeType,
       category: '',
       image_url: '',
       is_published: false,
@@ -65,7 +78,11 @@ export default function PostManagement() {
   const fetchPosts = async () => {
     setLoading(true);
     try {
-      const data = await api.posts.list({ limit: 100, publishedOnly: false });
+      const data = await api.posts.list({
+        type: fixedType,
+        limit: 100,
+        publishedOnly: false,
+      });
       setPosts(data);
     } catch (err) {
       toast.error('Gagal memuat daftar konten');
@@ -75,8 +92,9 @@ export default function PostManagement() {
   };
 
   useEffect(() => {
+    form.setValue('type', activeType);
     fetchPosts();
-  }, []);
+  }, [fixedType]);
 
   const handleEdit = (post: Post) => {
     setEditingPost(post);
@@ -118,7 +136,7 @@ export default function PostManagement() {
         title: sanitizedTitle,
         content: sanitizedContent,
         excerpt: sanitizedExcerpt,
-        type: values.type,
+        type: fixedType ?? values.type,
         category: sanitizedCategory,
         image_url: sanitizedImageUrl,
         is_published: values.is_published,
@@ -136,7 +154,15 @@ export default function PostManagement() {
       }
       setIsDialogOpen(false);
       setEditingPost(null);
-      form.reset();
+      form.reset({
+        title: '',
+        content: '',
+        excerpt: '',
+        type: activeType,
+        category: '',
+        image_url: '',
+        is_published: false,
+      });
       fetchPosts();
     } catch (err: any) {
       console.error(err);
@@ -165,24 +191,11 @@ export default function PostManagement() {
 
     setSubmitting(true);
     try {
-      // Sanitize filename
-      const safeFilename = sanitizeFilename(file.name);
-      const fileName = `${Date.now()}-${safeFilename}`;
-      
-      const { data, error } = await supabase.storage
-        .from('app-9wnpatirc0e9_pmi_images')
-        .upload(fileName, file);
-
-      if (error) throw error;
-
-      const { data: { publicUrl } } = supabase.storage
-        .from('app-9wnpatirc0e9_pmi_images')
-        .getPublicUrl(fileName);
-
-      form.setValue('image_url', publicUrl);
+      const uploaded = await api.uploads.image(file);
+      form.setValue('image_url', uploaded.url);
       toast.success('Gambar berhasil diunggah');
-    } catch (err) {
-      toast.error('Gagal mengunggah gambar');
+    } catch (err: any) {
+      toast.error(err?.message || 'Gagal mengunggah gambar');
     } finally {
       setSubmitting(false);
     }
@@ -191,7 +204,7 @@ export default function PostManagement() {
   return (
     <div className="space-y-6 pb-20">
       <div className="flex justify-between items-center">
-        <h2 className="text-2xl font-bold text-primary">Kelola Konten</h2>
+        <h2 className="text-2xl font-bold text-primary">{pageTitle}</h2>
         <Dialog open={isDialogOpen} onOpenChange={(open) => {
           setIsDialogOpen(open);
           if (!open) {
@@ -200,7 +213,7 @@ export default function PostManagement() {
               title: '',
               content: '',
               excerpt: '',
-              type: 'pmi_news',
+              type: activeType,
               category: '',
               image_url: '',
               is_published: false,
@@ -234,30 +247,38 @@ export default function PostManagement() {
                     )}
                   />
                   <div className="grid grid-cols-2 gap-4">
-                    <FormField
-                      control={form.control as any}
-                      name="type"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Tipe</FormLabel>
-                          <Select onValueChange={field.onChange} defaultValue={field.value}>
-                            <FormControl>
-                              <SelectTrigger>
-                                <SelectValue placeholder="Pilih Tipe" />
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                              <SelectItem value="pmi_news">Berita PMI</SelectItem>
-                              <SelectItem value="activity">Kegiatan</SelectItem>
-                              <SelectItem value="inspiration">Inspirasi</SelectItem>
-                              <SelectItem value="opinion">Opini</SelectItem>
-                              <SelectItem value="organization">Organisasi</SelectItem>
-                            </SelectContent>
-                          </Select>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
+                    {fixedType ? (
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium">Tipe</label>
+                        <div className="h-10 rounded-md border bg-muted px-3 flex items-center text-sm">
+                          {POST_TYPE_LABELS[fixedType]}
+                        </div>
+                      </div>
+                    ) : (
+                      <FormField
+                        control={form.control as any}
+                        name="type"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Tipe</FormLabel>
+                            <Select onValueChange={field.onChange} value={field.value}>
+                              <FormControl>
+                                <SelectTrigger>
+                                  <SelectValue placeholder="Pilih Tipe" />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                <SelectItem value="pmi_news">Berita PMI</SelectItem>
+                                <SelectItem value="activity">Kegiatan</SelectItem>
+                                <SelectItem value="inspiration">Inspirasi</SelectItem>
+                                <SelectItem value="opinion">Opini</SelectItem>
+                              </SelectContent>
+                            </Select>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    )}
                     <FormField
                       control={form.control as any}
                       name="category"

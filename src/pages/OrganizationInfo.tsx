@@ -6,16 +6,22 @@ import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
+import { formatDate } from '@/lib/utils';
 
 export default function OrganizationInfo() {
   const [orgs, setOrgs] = useState<Organization[]>([]);
+  const [activityReleases, setActivityReleases] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     async function fetchData() {
       try {
-        const data = await api.organizations.list();
-        setOrgs(data);
+        const [orgData, activityData] = await Promise.all([
+          api.organizations.list(),
+          api.posts.list({ type: 'activity', limit: 6 }),
+        ]);
+        setOrgs(orgData);
+        setActivityReleases(activityData);
       } catch (err) {
         console.error('Failed to fetch orgs:', err);
       } finally {
@@ -31,6 +37,7 @@ export default function OrganizationInfo() {
   return (
     <div className="container mx-auto px-4 py-12 max-w-6xl">
       <div className="text-center mb-16 space-y-4">
+        <Badge variant="outline">Profil Organisasi Nahdliyin Malaysia</Badge>
         <h1 className="text-4xl font-bold text-primary">Struktur & Badan Otonom</h1>
         <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
           Mengenal Pengurus Cabang Istimewa Nahdlatul Ulama (PCINU) Malaysia dan berbagai Badan Otonom (Banom) yang ada.
@@ -86,6 +93,41 @@ export default function OrganizationInfo() {
               </CardContent>
             </Card>
           ))}
+        </div>
+      </section>
+
+      <section className="mt-20">
+        <div className="flex items-center gap-4 mb-8">
+          <h2 className="text-3xl font-bold text-primary shrink-0">Rilis Kegiatan Terbaru</h2>
+          <Separator className="flex-1" />
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {loading ? (
+            Array(4).fill(0).map((_, i) => <Card key={i} className="animate-pulse bg-muted h-[180px]" />)
+          ) : activityReleases.length > 0 ? (
+            activityReleases.slice(0, 4).map((post) => (
+              <Card key={post.id} className="overflow-hidden border-l-4 border-primary/40">
+                <CardContent className="p-4">
+                  <div className="flex gap-4 items-start">
+                    <div className="w-24 h-20 rounded-lg overflow-hidden bg-muted shrink-0">
+                      <img src={post.image_url || 'https://via.placeholder.com/240x160'} alt={post.title} className="w-full h-full object-cover" />
+                    </div>
+                    <div className="space-y-2 min-w-0">
+                      <p className="text-[11px] uppercase tracking-wide font-semibold text-primary">{post.category || 'Kegiatan Banom'}</p>
+                      <h3 className="text-sm font-semibold line-clamp-2">{post.title}</h3>
+                      <p className="text-xs text-muted-foreground line-clamp-2">{post.excerpt || 'Rilis kegiatan organisasi dan relawan NU Malaysia.'}</p>
+                      <p className="text-[11px] text-muted-foreground">{formatDate(post.published_at || post.created_at)}</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            ))
+          ) : (
+            <div className="md:col-span-2 rounded-xl border border-dashed p-6 text-center text-sm text-muted-foreground">
+              Belum ada rilis kegiatan terbaru.
+            </div>
+          )}
         </div>
       </section>
 

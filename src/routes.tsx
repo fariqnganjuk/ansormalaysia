@@ -14,7 +14,14 @@ const Contact = lazy(() => import('./pages/Contact'));
 const Login = lazy(() => import('./pages/Login'));
 const Dashboard = lazy(() => import('./pages/admin/Dashboard'));
 const PostManagement = lazy(() => import('./pages/admin/PostManagement'));
+const NewsManagement = lazy(() => import('./pages/admin/NewsManagement'));
+const ActivityManagement = lazy(() => import('./pages/admin/ActivityManagement'));
+const InspirationManagement = lazy(() => import('./pages/admin/InspirationManagement'));
+const OpinionManagement = lazy(() => import('./pages/admin/OpinionManagement'));
 const ComplaintManagement = lazy(() => import('./pages/admin/ComplaintManagement'));
+const OrganizationManagement = lazy(() => import('./pages/admin/OrganizationManagement'));
+const InfographicManagement = lazy(() => import('./pages/admin/InfographicManagement'));
+const UserManagement = lazy(() => import('./pages/admin/UserManagement'));
 const NotFound = lazy(() => import('./pages/NotFound'));
 
 export interface RouteConfig {
@@ -38,7 +45,14 @@ const routes: RouteConfig[] = [
   { path: '/login', element: <Login /> },
   { path: '/dashboard', element: <Dashboard /> },
   { path: '/dashboard/posts', element: <PostManagement /> },
+  { path: '/dashboard/posts/news', element: <NewsManagement /> },
+  { path: '/dashboard/posts/activities', element: <ActivityManagement /> },
+  { path: '/dashboard/posts/inspirations', element: <InspirationManagement /> },
+  { path: '/dashboard/posts/opinions', element: <OpinionManagement /> },
   { path: '/dashboard/complaints', element: <ComplaintManagement /> },
+  { path: '/dashboard/organizations', element: <OrganizationManagement /> },
+  { path: '/dashboard/infographics', element: <InfographicManagement /> },
+  { path: '/dashboard/users', element: <UserManagement /> },
   { path: '*', element: <NotFound /> },
 ];
 

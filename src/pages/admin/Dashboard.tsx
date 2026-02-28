@@ -1,10 +1,10 @@
 import { useEffect, useState } from 'react';
 import { api } from '@/db';
-import type { Post, Complaint } from '@/db';
+import type { Complaint } from '@/db';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { FileText, MessageSquare, Users, TrendingUp, ArrowRight, ShieldCheck, AlertCircle } from 'lucide-react';
+import { FileText, MessageSquare, Users, TrendingUp, ArrowRight, ShieldCheck, AlertCircle, BarChart3 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { formatDate } from '@/lib/utils';
 import { Separator } from '@/components/ui/separator';
@@ -13,7 +13,8 @@ export default function Dashboard() {
   const [stats, setStats] = useState({
     posts: 0,
     complaints: 0,
-    organizations: 0
+    organizations: 0,
+    infographics: 0,
   });
   const [recentComplaints, setRecentComplaints] = useState<Complaint[]>([]);
   const [loading, setLoading] = useState(true);
@@ -21,15 +22,17 @@ export default function Dashboard() {
   useEffect(() => {
     async function fetchData() {
       try {
-        const [posts, complaints, orgs] = await Promise.all([
+        const [posts, complaints, orgs, infographics] = await Promise.all([
           api.posts.list({ limit: 100, publishedOnly: false }),
           api.complaints.list(),
-          api.organizations.list()
+          api.organizations.list(),
+          api.infographics.list(),
         ]);
         setStats({
           posts: posts.length,
           complaints: complaints.length,
-          organizations: orgs.length
+          organizations: orgs.length,
+          infographics: infographics.length,
         });
         setRecentComplaints(complaints.slice(0, 5));
       } catch (err) {
@@ -60,7 +63,7 @@ export default function Dashboard() {
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
         <Card className="border-l-4 border-primary shadow-sm hover:shadow-md transition-shadow">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium">Total Konten/Berita</CardTitle>
@@ -94,6 +97,18 @@ export default function Dashboard() {
             <div className="text-2xl font-bold">{stats.organizations}</div>
             <p className="text-xs text-muted-foreground italic flex items-center gap-1 mt-1">
               <ShieldCheck className="h-3 w-3" /> Terdaftar dalam sistem
+            </p>
+          </CardContent>
+        </Card>
+        <Card className="border-l-4 border-blue-600 shadow-sm hover:shadow-md transition-shadow">
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-sm font-medium">Data Infografis</CardTitle>
+            <BarChart3 className="h-4 w-4 text-blue-600" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{stats.infographics}</div>
+            <p className="text-xs text-muted-foreground italic flex items-center gap-1 mt-1">
+              <TrendingUp className="h-3 w-3" /> Data siap tampil di halaman publik
             </p>
           </CardContent>
         </Card>
@@ -140,6 +155,36 @@ export default function Dashboard() {
 
         {/* Quick Actions & Maintenance */}
         <div className="space-y-8">
+          <Card className="shadow-lg border-primary/5">
+            <CardHeader className="border-b bg-muted/30">
+              <CardTitle>Aksi Cepat Pengelolaan</CardTitle>
+              <CardDescription>Kelola seluruh bagian konten website dari dashboard.</CardDescription>
+            </CardHeader>
+            <CardContent className="p-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <Button asChild variant="outline" className="justify-start">
+                <Link to="/dashboard/posts/news"><FileText className="mr-2 h-4 w-4" /> Kelola Berita</Link>
+              </Button>
+              <Button asChild variant="outline" className="justify-start">
+                <Link to="/dashboard/posts/activities"><FileText className="mr-2 h-4 w-4" /> Kelola Kegiatan</Link>
+              </Button>
+              <Button asChild variant="outline" className="justify-start">
+                <Link to="/dashboard/posts/inspirations"><FileText className="mr-2 h-4 w-4" /> Kelola Inspirasi</Link>
+              </Button>
+              <Button asChild variant="outline" className="justify-start">
+                <Link to="/dashboard/posts/opinions"><FileText className="mr-2 h-4 w-4" /> Kelola Opini</Link>
+              </Button>
+              <Button asChild variant="outline" className="justify-start">
+                <Link to="/dashboard/organizations"><Users className="mr-2 h-4 w-4" /> Organisasi</Link>
+              </Button>
+              <Button asChild variant="outline" className="justify-start">
+                <Link to="/dashboard/infographics"><BarChart3 className="mr-2 h-4 w-4" /> Infografis</Link>
+              </Button>
+              <Button asChild variant="outline" className="justify-start">
+                <Link to="/dashboard/complaints"><MessageSquare className="mr-2 h-4 w-4" /> Pengaduan PMI</Link>
+              </Button>
+            </CardContent>
+          </Card>
+
           <Card className="shadow-lg border-primary/5">
             <CardHeader className="border-b bg-muted/30">
               <CardTitle>Panduan Pengelola Konten</CardTitle>

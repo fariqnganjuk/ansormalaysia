@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { NavLink, Link, useNavigate } from 'react-router-dom';
-import { Menu, X, User, LogOut, ChevronDown, LogIn } from 'lucide-react';
+import { Menu, User, LogOut, LogIn } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
 import {
@@ -26,7 +26,7 @@ const NAV_ITEMS = [
 ];
 
 export function PublicLayout({ children }: { children: React.ReactNode }) {
-  const { user, profile, signOut } = useAuth();
+  const { user, signOut } = useAuth();
   const navigate = useNavigate();
   const [isOpen, setIsOpen] = useState(false);
 
@@ -40,13 +40,13 @@ export function PublicLayout({ children }: { children: React.ReactNode }) {
       {/* Navbar */}
       <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
         <div className="container mx-auto px-4 h-16 flex items-center justify-between">
-          <Link to="/" className="flex items-center space-x-2">
-            <div className="w-10 h-10 bg-primary rounded-full flex items-center justify-center text-white font-bold text-xl">
-              NU
-            </div>
-            <div className="flex flex-col leading-none">
-              <span className="font-bold text-lg text-primary uppercase">NU Malaysia</span>
-              <span className="text-[10px] text-muted-foreground uppercase">Media & Advokasi PMI</span>
+          <Link to="/" className="flex items-center gap-2 min-w-0">
+            <img
+              src="/uploads/ansormalaysia-removebg-preview.png"
+              alt="Logo Ansor Malaysia"
+              className="h-11 w-auto object-contain shrink-0"
+            />
+            <div className="hidden sm:flex flex-col leading-none">
             </div>
           </Link>
 
@@ -141,10 +141,10 @@ export function PublicLayout({ children }: { children: React.ReactNode }) {
           <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
             <div className="col-span-1 md:col-span-1">
               <div className="flex items-center space-x-2 mb-4">
-                <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center text-primary font-bold text-xl">
-                  NU
+                <div className="h-10 w-10 rounded-full overflow-hidden bg-white border border-primary/20 flex items-center justify-center">
+                  <img src="/uploads/ansormalaysia-removebg-preview.png" alt="Logo Ansor Malaysia" className="h-8 w-8 object-contain" />
                 </div>
-                <span className="font-bold text-lg">NU Malaysia</span>
+                <span className="font-bold text-lg">Ansor Malaysia</span>
               </div>
               <p className="text-sm text-primary-foreground/70 mb-4">
                 Media informasi dan advokasi independen untuk Nahdliyin dan Pekerja Migran Indonesia di Malaysia.
@@ -177,7 +177,7 @@ export function PublicLayout({ children }: { children: React.ReactNode }) {
             </div>
           </div>
           <div className="border-t border-primary-foreground/20 mt-8 pt-8 text-center text-sm text-primary-foreground/50">
-            © 2026 NU Malaysia Media & PMI Advocacy. Seluruh hak cipta dilindungi.
+            © 2026 Ansor Malaysia . Seluruh hak cipta dilindungi.
           </div>
         </div>
       </footer>

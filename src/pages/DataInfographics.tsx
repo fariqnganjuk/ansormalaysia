@@ -11,14 +11,23 @@ export default function DataInfographics() {
   const [infographics, setInfographics] = useState<Infographic[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedLocation, setSelectedLocation] = useState<Infographic | null>(null);
+  const [dataSource, setDataSource] = useState<string>('internal');
 
   useEffect(() => {
     async function fetchData() {
       try {
-        const data = await api.infographics.list();
-        setInfographics(data);
+        const result = await api.infographics.listPublicMalaysia();
+        setInfographics(result.items);
+        setDataSource(result.meta.source || 'internal');
       } catch (err) {
-        console.error('Failed to fetch infographics:', err);
+        console.error('Failed to fetch public malaysia infographics:', err);
+        try {
+          const fallback = await api.infographics.list();
+          setInfographics(fallback);
+          setDataSource('internal-fallback');
+        } catch (fallbackErr) {
+          console.error('Failed to fetch fallback infographics:', fallbackErr);
+        }
       } finally {
         setLoading(false);
       }
@@ -78,10 +87,16 @@ export default function DataInfographics() {
   return (
     <div className="container mx-auto px-4 py-12 pb-24 max-w-6xl space-y-12">
       <div className="text-center mb-16 space-y-4">
+        <div className="flex justify-center">
+          <Badge variant="outline">Pusat Data PMI Malaysia</Badge>
+        </div>
         <h1 className="text-4xl font-bold text-primary">Data & Infografis PMI</h1>
         <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
           Visualisasi data dan statistik mengenai kondisi Pekerja Migran Indonesia di Malaysia berdasarkan lokasi geografis
         </p>
+        <div className="flex justify-center">
+          <Badge variant="outline">Sumber data: {dataSource === 'internal-fallback' ? 'Internal (fallback)' : dataSource}</Badge>
+        </div>
       </div>
 
       {/* Summary Cards */}
@@ -243,11 +258,11 @@ export default function DataInfographics() {
                   <CardDescription className="line-clamp-2 italic">{info.description}</CardDescription>
                 </CardHeader>
                 <CardContent className="p-0">
-                  <div className="w-full aspect-video bg-muted overflow-hidden">
+                  <div className="w-full aspect-video bg-muted/40 overflow-hidden p-2">
                     <img 
                       src={info.image_url} 
                       alt={info.title} 
-                      className="w-full h-full object-cover hover:scale-105 transition-transform duration-500 cursor-pointer" 
+                      className="w-full h-full object-contain cursor-pointer" 
                       onClick={() => window.open(info.image_url, '_blank')} 
                     />
                   </div>

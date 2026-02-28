@@ -4,8 +4,6 @@ ast-grep scan -r .rules/SelectItem.yml
 
 ast-grep scan -r .rules/contrast.yml
 
-ast-grep scan -r .rules/supabase-google-sso.yml
-
 ast-grep scan -r .rules/toast-hook.yml
 
 useauth_output=$(ast-grep scan -r .rules/useAuth.yml 2>/dev/null)

@@ -33,9 +33,10 @@ export default function PostListPage({ title, type, description }: PostListPageP
 
   return (
     <div className="container mx-auto px-4 py-12">
-      <div className="max-w-2xl mb-12">
-        <h1 className="text-4xl font-bold text-primary mb-4">{title}</h1>
-        <p className="text-muted-foreground text-lg">{description}</p>
+      <div className="max-w-3xl mb-12 space-y-4">
+        <Badge variant="outline">Portal Isu PMI NU Malaysia</Badge>
+        <h1 className="text-4xl font-bold text-primary border-l-4 border-primary pl-4">{title}</h1>
+        <p className="text-muted-foreground text-lg leading-relaxed">{description}</p>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
@@ -44,8 +45,8 @@ export default function PostListPage({ title, type, description }: PostListPageP
         ) : posts.length > 0 ? (
           posts.map((post) => (
             <Card key={post.id} className="overflow-hidden flex flex-col hover:shadow-lg transition-shadow">
-              <div className="aspect-video overflow-hidden">
-                <img src={post.image_url || 'https://via.placeholder.com/600x400'} alt={post.title} className="w-full h-full object-cover" />
+              <div className="aspect-video overflow-hidden bg-muted/40 p-2">
+                <img src={post.image_url || 'https://via.placeholder.com/600x400'} alt={post.title} className="w-full h-full object-contain" />
               </div>
               <CardHeader>
                 <div className="flex items-center gap-2 mb-2">
