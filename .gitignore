@@ -27,3 +27,9 @@ package-lock.json
 .sync
 history/*.json
 .vite_cache
+
+# Sensitive/runtime files
+.env
+.env.*
+!.env.example
+backend/.sessions/
