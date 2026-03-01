@@ -3,7 +3,7 @@ import { api, type Infographic } from '@/db';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Download, Share2, Info, MapPin, Users, Scale, HandHeart, TrendingUp } from 'lucide-react';
+import { Download, Share2, Info, MapPin, Users, Scale, HandHeart, TrendingUp, AlertCircle } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
@@ -137,6 +137,39 @@ export default function DataInfographics() {
     .filter(i => i.data_type === 'bantuan_advokasi')
     .reduce((sum, i) => sum + (i.data_value || 0), 0);
 
+  const totalKasusDilaporkan = infographics
+    .filter((item) => {
+      const type = (item.data_type || '').toLowerCase();
+      const title = (item.title || '').toLowerCase();
+      return type.includes('kasus') || title.includes('kasus');
+    })
+    .reduce((sum, item) => sum + (item.data_value || 0), 0);
+
+  const kasusSelesaiRaw = infographics
+    .filter((item) => {
+      const type = (item.data_type || '').toLowerCase();
+      const title = (item.title || '').toLowerCase();
+      const desc = (item.description || '').toLowerCase();
+      return (
+        type.includes('selesai') ||
+        type.includes('resolved') ||
+        title.includes('selesai') ||
+        title.includes('ditangani') ||
+        desc.includes('selesai') ||
+        desc.includes('tuntas')
+      );
+    })
+    .reduce((sum, item) => sum + (item.data_value || 0), 0);
+
+  const kasusSelesai = kasusSelesaiRaw > 0 ? kasusSelesaiRaw : totalBantuan;
+  const kasusAktif = Math.max(totalKasusDilaporkan - kasusSelesai, 0);
+
+  const lastUpdatedAt = infographics.reduce<string | null>((latest, item) => {
+    if (!item.created_at) return latest;
+    if (!latest) return item.created_at;
+    return new Date(item.created_at).getTime() > new Date(latest).getTime() ? item.created_at : latest;
+  }, null);
+
   const migrationStatsData = selectedLocationItems
     .filter(item => item.data_value !== null)
     .map((item, index) => ({
@@ -181,8 +214,34 @@ export default function DataInfographics() {
         </div>
       </div>
 
+      <Card className="border-primary/20 bg-primary/5">
+        <CardContent className="p-5 md:p-6">
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+            <div className="space-y-1">
+              <p className="text-sm font-semibold text-primary">Referensi Dashboard KP2MI</p>
+              <p className="text-xs text-muted-foreground">
+                Data ditampilkan dengan struktur visual mengacu referensi KP2MI, dengan sumber utama eksternal bila tersedia dan fallback data manual internal.
+              </p>
+            </div>
+            <a
+              href="https://kp2mi.go.id/dashboard-publik"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-sm font-semibold text-primary underline underline-offset-4"
+            >
+              Buka Referensi KP2MI
+            </a>
+          </div>
+          {lastUpdatedAt && (
+            <p className="mt-3 text-[11px] text-muted-foreground">
+              Pembaruan data terakhir: {new Date(lastUpdatedAt).toLocaleString('id-ID')}
+            </p>
+          )}
+        </CardContent>
+      </Card>
+
       {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-6 mb-12">
         <Card className="bg-gradient-to-br from-primary/10 to-primary/5 border-primary/20">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium">Total PMI</CardTitle>
@@ -213,6 +272,39 @@ export default function DataInfographics() {
           <CardContent>
             <div className="text-3xl font-bold text-green-600">{totalBantuan.toLocaleString('id-ID')}</div>
             <p className="text-xs text-muted-foreground mt-1">Layanan advokasi</p>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-gradient-to-br from-red-500/10 to-red-500/5 border-red-500/20">
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-sm font-medium">Total Kasus</CardTitle>
+            <AlertCircle className="h-5 w-5 text-red-600" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-3xl font-bold text-red-600">{totalKasusDilaporkan.toLocaleString('id-ID')}</div>
+            <p className="text-xs text-muted-foreground mt-1">Kasus dilaporkan</p>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-gradient-to-br from-emerald-500/10 to-emerald-500/5 border-emerald-500/20">
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-sm font-medium">Kasus Selesai</CardTitle>
+            <Scale className="h-5 w-5 text-emerald-600" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-3xl font-bold text-emerald-600">{kasusSelesai.toLocaleString('id-ID')}</div>
+            <p className="text-xs text-muted-foreground mt-1">Telah diselesaikan</p>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-gradient-to-br from-amber-500/10 to-amber-500/5 border-amber-500/20">
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-sm font-medium">Kasus Aktif</CardTitle>
+            <TrendingUp className="h-5 w-5 text-amber-600" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-3xl font-bold text-amber-600">{kasusAktif.toLocaleString('id-ID')}</div>
+            <p className="text-xs text-muted-foreground mt-1">Masih dalam proses</p>
           </CardContent>
         </Card>
       </div>
