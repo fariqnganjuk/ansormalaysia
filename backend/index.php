@@ -8,6 +8,266 @@ $route = trim((string) ($_GET['route'] ?? ''), '/');
 $method = strtoupper((string) ($_SERVER['REQUEST_METHOD'] ?? 'GET'));
 $segments = $route === '' ? [] : explode('/', $route);
 
+function ensure_external_news_table(): void
+{
+    db()->exec("CREATE TABLE IF NOT EXISTS external_news (
+        id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+        source_name VARCHAR(120) NOT NULL,
+        source_link VARCHAR(700) NOT NULL,
+        title VARCHAR(300) NOT NULL,
+        excerpt TEXT NULL,
+        image_url VARCHAR(700) NULL,
+        published_at DATETIME NULL,
+        created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        UNIQUE KEY uq_external_news_source_link (source_link),
+        INDEX idx_external_news_published_at (published_at),
+        INDEX idx_external_news_source_name (source_name)
+    ) ENGINE=InnoDB");
+}
+
+function external_news_default_feeds(): array
+{
+    return [
+        ['name' => 'Kompas', 'url' => 'https://rss.kompas.com/rss/news'],
+        ['name' => 'NU Online', 'url' => 'https://www.nu.or.id/rss'],
+        ['name' => 'Detik', 'url' => 'https://rss.detik.com/index.php/detikcom'],
+    ];
+}
+
+function external_news_feeds(): array
+{
+    $raw = trim(env_value('RSS_FEEDS', ''));
+    if ($raw === '') {
+        return external_news_default_feeds();
+    }
+
+    $decoded = json_decode($raw, true);
+    if (!is_array($decoded)) {
+        return external_news_default_feeds();
+    }
+
+    $feeds = [];
+    foreach ($decoded as $item) {
+        if (!is_array($item)) {
+            continue;
+        }
+
+        $name = trim((string) ($item['name'] ?? ''));
+        $url = trim((string) ($item['url'] ?? ''));
+        if ($name === '' || $url === '') {
+            continue;
+        }
+
+        $feeds[] = ['name' => $name, 'url' => $url];
+    }
+
+    return $feeds !== [] ? $feeds : external_news_default_feeds();
+}
+
+function fetch_text_url(string $url): string
+{
+    if (function_exists('curl_init')) {
+        $ch = curl_init($url);
+        curl_setopt_array($ch, [
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_FOLLOWLOCATION => true,
+            CURLOPT_CONNECTTIMEOUT => 8,
+            CURLOPT_TIMEOUT => 15,
+            CURLOPT_USERAGENT => 'ANSOR Malaysia RSS Fetcher/1.0',
+        ]);
+        $result = curl_exec($ch);
+        $code = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        curl_close($ch);
+
+        if (is_string($result) && $result !== '' && $code >= 200 && $code < 400) {
+            return $result;
+        }
+    }
+
+    $context = stream_context_create([
+        'http' => [
+            'method' => 'GET',
+            'timeout' => 12,
+            'header' => "User-Agent: ANSOR Malaysia RSS Fetcher/1.0\r\n",
+        ],
+    ]);
+    $data = @file_get_contents($url, false, $context);
+    return is_string($data) ? $data : '';
+}
+
+function normalize_external_news_date(?string $input): ?string
+{
+    if (!is_string($input) || trim($input) === '') {
+        return null;
+    }
+
+    $timestamp = strtotime($input);
+    if ($timestamp === false) {
+        return null;
+    }
+
+    return gmdate('Y-m-d H:i:s', $timestamp);
+}
+
+function clean_external_news_text(?string $text, int $maxLen = 260): ?string
+{
+    if (!is_string($text) || trim($text) === '') {
+        return null;
+    }
+
+    $plain = trim(preg_replace('/\s+/', ' ', strip_tags($text)) ?? '');
+    if ($plain === '') {
+        return null;
+    }
+
+    if (mb_strlen($plain) <= $maxLen) {
+        return $plain;
+    }
+
+    return rtrim(mb_substr($plain, 0, $maxLen - 1)) . '…';
+}
+
+function parse_external_news_items(string $sourceName, string $xmlText): array
+{
+    if (trim($xmlText) === '') {
+        return [];
+    }
+
+    libxml_use_internal_errors(true);
+    $xml = simplexml_load_string($xmlText, 'SimpleXMLElement', LIBXML_NOCDATA);
+    if (!$xml instanceof SimpleXMLElement) {
+        libxml_clear_errors();
+        return [];
+    }
+
+    $items = [];
+    $nodeList = [];
+
+    if (isset($xml->channel->item)) {
+        foreach ($xml->channel->item as $item) {
+            $nodeList[] = $item;
+        }
+    } elseif (isset($xml->entry)) {
+        foreach ($xml->entry as $entry) {
+            $nodeList[] = $entry;
+        }
+    }
+
+    foreach ($nodeList as $node) {
+        $title = trim((string) ($node->title ?? ''));
+        if ($title === '') {
+            continue;
+        }
+
+        $link = trim((string) ($node->link ?? ''));
+        if ($link === '' && isset($node->link)) {
+            foreach ($node->link->attributes() as $key => $value) {
+                if ((string) $key === 'href') {
+                    $link = trim((string) $value);
+                    break;
+                }
+            }
+        }
+
+        if ($link === '') {
+            continue;
+        }
+
+        $description = clean_external_news_text((string) ($node->description ?? $node->summary ?? $node->content ?? ''), 280);
+
+        $publishedAt = normalize_external_news_date((string) ($node->pubDate ?? $node->published ?? $node->updated ?? null));
+
+        $imageUrl = null;
+        if (isset($node->enclosure)) {
+            foreach ($node->enclosure->attributes() as $key => $value) {
+                if ((string) $key === 'url') {
+                    $imageUrl = trim((string) $value);
+                    break;
+                }
+            }
+        }
+
+        if (!$imageUrl && isset($node->children('media', true)->content)) {
+            foreach ($node->children('media', true)->content as $mediaContent) {
+                foreach ($mediaContent->attributes() as $key => $value) {
+                    if ((string) $key === 'url') {
+                        $imageUrl = trim((string) $value);
+                        break 2;
+                    }
+                }
+            }
+        }
+
+        $items[] = [
+            'source_name' => $sourceName,
+            'source_link' => $link,
+            'title' => $title,
+            'excerpt' => $description,
+            'image_url' => $imageUrl !== '' ? $imageUrl : null,
+            'published_at' => $publishedAt,
+        ];
+    }
+
+    return $items;
+}
+
+function refresh_external_news_feed(): array
+{
+    ensure_external_news_table();
+
+    $feeds = external_news_feeds();
+    $pdo = db();
+
+    $upsert = $pdo->prepare('INSERT INTO external_news (source_name, source_link, title, excerpt, image_url, published_at) VALUES (:source_name, :source_link, :title, :excerpt, :image_url, :published_at)
+        ON DUPLICATE KEY UPDATE source_name = VALUES(source_name), title = VALUES(title), excerpt = VALUES(excerpt), image_url = VALUES(image_url), published_at = VALUES(published_at), updated_at = CURRENT_TIMESTAMP');
+
+    $inserted = 0;
+    foreach ($feeds as $feed) {
+        $xml = fetch_text_url((string) $feed['url']);
+        $items = parse_external_news_items((string) $feed['name'], $xml);
+        foreach ($items as $item) {
+            $upsert->execute([
+                'source_name' => $item['source_name'],
+                'source_link' => $item['source_link'],
+                'title' => $item['title'],
+                'excerpt' => $item['excerpt'],
+                'image_url' => $item['image_url'],
+                'published_at' => $item['published_at'],
+            ]);
+            $inserted++;
+        }
+    }
+
+    return [
+        'ok' => true,
+        'processed' => $inserted,
+        'updated_at' => gmdate('Y-m-d H:i:s'),
+    ];
+}
+
+function list_external_news_public(int $limit): array
+{
+    ensure_external_news_table();
+    $stmt = db()->prepare('SELECT id, source_name, source_link, title, excerpt, image_url, published_at, created_at FROM external_news ORDER BY COALESCE(published_at, created_at) DESC LIMIT :limit');
+    $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
+    $stmt->execute();
+    $rows = $stmt->fetchAll();
+
+    return array_map(static function (array $row): array {
+        return [
+            'id' => (string) $row['id'],
+            'source_name' => $row['source_name'],
+            'source_link' => $row['source_link'],
+            'title' => $row['title'],
+            'excerpt' => $row['excerpt'],
+            'image_url' => $row['image_url'],
+            'published_at' => $row['published_at'],
+            'created_at' => $row['created_at'],
+        ];
+    }, $rows);
+}
+
 try {
     if ($route === '') {
         respond(['name' => 'ANSOR Malaysia PHP API', 'ok' => true]);
@@ -521,6 +781,37 @@ try {
             );
 
             respond(['ok' => true]);
+        }
+    }
+
+    if ($segments[0] === 'external-news') {
+        if ($method === 'GET' && count($segments) === 2 && $segments[1] === 'public') {
+            $limit = (int) ($_GET['limit'] ?? 20);
+            $limit = max(1, min(100, $limit));
+
+            $items = list_external_news_public($limit);
+
+            respond([
+                'items' => $items,
+                'meta' => [
+                    'count' => count($items),
+                ],
+            ]);
+        }
+
+        if ($method === 'POST' && count($segments) === 2 && $segments[1] === 'refresh') {
+            $admin = require_auth();
+            $result = refresh_external_news_feed();
+
+            write_audit_log(
+                $admin,
+                'refresh_external_news',
+                'external_news',
+                null,
+                'Refresh RSS external news'
+            );
+
+            respond($result);
         }
     }
 

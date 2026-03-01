@@ -4,10 +4,11 @@ import type { Complaint } from '@/db';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { FileText, MessageSquare, Users, TrendingUp, ArrowRight, ShieldCheck, AlertCircle, BarChart3 } from 'lucide-react';
+import { FileText, MessageSquare, Users, TrendingUp, ArrowRight, ShieldCheck, AlertCircle, BarChart3, RefreshCw } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { formatDate } from '@/lib/utils';
 import { Separator } from '@/components/ui/separator';
+import { toast } from 'sonner';
 
 export default function Dashboard() {
   const [stats, setStats] = useState({
@@ -18,6 +19,8 @@ export default function Dashboard() {
   });
   const [recentComplaints, setRecentComplaints] = useState<Complaint[]>([]);
   const [loading, setLoading] = useState(true);
+  const [rssRefreshing, setRssRefreshing] = useState(false);
+  const [rssLastRefresh, setRssLastRefresh] = useState<string | null>(null);
 
   useEffect(() => {
     async function fetchData() {
@@ -44,6 +47,19 @@ export default function Dashboard() {
     fetchData();
   }, []);
 
+  const handleRefreshRss = async () => {
+    setRssRefreshing(true);
+    try {
+      const result = await api.externalNews.refresh();
+      setRssLastRefresh(result.updated_at || new Date().toISOString());
+      toast.success(`Refresh RSS berhasil. Item diproses: ${result.processed}`);
+    } catch (err: any) {
+      toast.error(err?.message || 'Gagal refresh RSS eksternal');
+    } finally {
+      setRssRefreshing(false);
+    }
+  };
+
   return (
     <div className="space-y-8 pb-12">
       {/* Welcome Section */}
@@ -56,11 +72,21 @@ export default function Dashboard() {
           <Button asChild className="bg-primary text-white hover:bg-primary/90">
             <Link to="/dashboard/posts"><FileText className="mr-2 h-4 w-4" /> Tambah Konten</Link>
           </Button>
+          <Button type="button" variant="outline" onClick={handleRefreshRss} disabled={rssRefreshing}>
+            <RefreshCw className={`mr-2 h-4 w-4 ${rssRefreshing ? 'animate-spin' : ''}`} />
+            {rssRefreshing ? 'Refresh RSS...' : 'Refresh RSS'}
+          </Button>
           <Button asChild variant="outline">
             <Link to="/"><ArrowRight className="mr-2 h-4 w-4" /> Lihat Website Utama</Link>
           </Button>
         </div>
       </div>
+
+      {rssLastRefresh && (
+        <div className="text-xs text-muted-foreground -mt-4">
+          Refresh RSS terakhir: {formatDate(rssLastRefresh)}
+        </div>
+      )}
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">

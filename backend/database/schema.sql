@@ -89,6 +89,21 @@ CREATE TABLE IF NOT EXISTS infographics (
   INDEX idx_infographics_location (location_name)
 ) ENGINE=InnoDB;
 
+CREATE TABLE IF NOT EXISTS external_news (
+  id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  source_name VARCHAR(120) NOT NULL,
+  source_link VARCHAR(700) NOT NULL,
+  title VARCHAR(300) NOT NULL,
+  excerpt TEXT NULL,
+  image_url VARCHAR(700) NULL,
+  published_at DATETIME NULL,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  UNIQUE KEY uq_external_news_source_link (source_link),
+  INDEX idx_external_news_published_at (published_at),
+  INDEX idx_external_news_source_name (source_name)
+) ENGINE=InnoDB;
+
 CREATE TABLE IF NOT EXISTS audit_logs (
   id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   user_id BIGINT UNSIGNED NULL,

@@ -6,6 +6,57 @@ import { Button } from '@/components/ui/button';
 import { Download, Share2, Info, MapPin, Users, Scale, HandHeart, TrendingUp } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import {
+  ResponsiveContainer,
+  BarChart,
+  Bar,
+  Cell,
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+} from 'recharts';
+
+const MALAYSIA_BOUNDS = {
+  minLat: 0,
+  maxLat: 8,
+  minLng: 99,
+  maxLng: 120,
+};
+
+const CHART_COLORS = ['#0f766e', '#f59e0b', '#16a34a', '#dc2626', '#3b82f6', '#8b5cf6'];
+
+function clampPercent(value: number, min = 5, max = 95) {
+  return Math.max(min, Math.min(max, value));
+}
+
+function toGeoPosition(lat: number | null, lng: number | null, fallbackIndex: number) {
+  if (lat === null || lng === null || Number.isNaN(lat) || Number.isNaN(lng)) {
+    const col = fallbackIndex % 4;
+    const row = Math.floor(fallbackIndex / 4);
+    return {
+      left: 18 + col * 20,
+      top: 20 + row * 18,
+    };
+  }
+
+  const lngRatio = (lng - MALAYSIA_BOUNDS.minLng) / (MALAYSIA_BOUNDS.maxLng - MALAYSIA_BOUNDS.minLng);
+  const latRatio = (lat - MALAYSIA_BOUNDS.minLat) / (MALAYSIA_BOUNDS.maxLat - MALAYSIA_BOUNDS.minLat);
+
+  return {
+    left: clampPercent(lngRatio * 100),
+    top: clampPercent((1 - latRatio) * 100),
+  };
+}
+
+function monthKey(dateText: string) {
+  const d = new Date(dateText);
+  if (Number.isNaN(d.getTime())) return 'Unknown';
+  return d.toLocaleDateString('id-ID', { month: 'short', year: '2-digit' });
+}
 
 export default function DataInfographics() {
   const [infographics, setInfographics] = useState<Infographic[]>([]);
@@ -52,6 +103,8 @@ export default function DataInfographics() {
   }, {});
 
   const locations = Object.values(locationData);
+  const selectedLocationName = selectedLocation?.location_name || locations[0]?.name || null;
+  const selectedLocationItems = selectedLocationName ? locationData[selectedLocationName]?.data || [] : [];
 
   // Calculate totals
   const totalPMI = infographics
@@ -65,6 +118,35 @@ export default function DataInfographics() {
   const totalBantuan = infographics
     .filter(i => i.data_type === 'bantuan_advokasi')
     .reduce((sum, i) => sum + (i.data_value || 0), 0);
+
+  const migrationStatsData = selectedLocationItems
+    .filter(item => item.data_value !== null)
+    .map((item, index) => ({
+      name: getDataTypeLabel(item.data_type),
+      value: item.data_value || 0,
+      fill: CHART_COLORS[index % CHART_COLORS.length],
+    }));
+
+  const trendAccumulator = selectedLocationItems.reduce<Record<string, { month: string; total: number; kasus: number; advokasi: number }>>((acc, item) => {
+    const key = monthKey(item.created_at);
+    if (!acc[key]) {
+      acc[key] = { month: key, total: 0, kasus: 0, advokasi: 0 };
+    }
+
+    acc[key].total += item.data_value || 0;
+    if (item.data_type === 'kasus_hukum') acc[key].kasus += item.data_value || 0;
+    if (item.data_type === 'bantuan_advokasi') acc[key].advokasi += item.data_value || 0;
+    return acc;
+  }, {});
+
+  const trendData = Object.values(trendAccumulator);
+
+  const nuActivities = (selectedLocationName ? selectedLocationItems : infographics).filter((item) => {
+    const title = (item.title || '').toLowerCase();
+    const desc = (item.description || '').toLowerCase();
+    const type = (item.data_type || '').toLowerCase();
+    return type.includes('kegiatan') || title.includes('kegiatan') || title.includes('banom') || title.includes('nu') || desc.includes('kegiatan');
+  });
 
   const getDataTypeLabel = (type: string | null) => {
     switch (type) {
@@ -136,9 +218,11 @@ export default function DataInfographics() {
       </div>
 
       <Tabs defaultValue="map" className="space-y-8">
-        <TabsList className="grid w-full max-w-md mx-auto grid-cols-2">
+        <TabsList className="grid w-full max-w-3xl mx-auto grid-cols-4">
           <TabsTrigger value="map">Peta Interaktif</TabsTrigger>
-          <TabsTrigger value="infografis">Infografis</TabsTrigger>
+          <TabsTrigger value="stats">Statistik PMI & Migrasi</TabsTrigger>
+          <TabsTrigger value="trend">Peta Isu & Grafik Trend</TabsTrigger>
+          <TabsTrigger value="infografis">Infografis Kegiatan NU</TabsTrigger>
         </TabsList>
 
         <TabsContent value="map" className="space-y-6">
@@ -152,17 +236,28 @@ export default function DataInfographics() {
               <CardDescription>Klik lokasi untuk melihat detail data</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="relative w-full h-[500px] bg-muted rounded-lg overflow-hidden">
-                {/* Google Maps Embed */}
-                <iframe
-                  width="100%"
-                  height="100%"
-                  style={{ border: 0 }}
-                  loading="lazy"
-                  allowFullScreen
-                  referrerPolicy="no-referrer-when-downgrade"
-                  src="https://www.google.com/maps/embed/v1/view?key=AIzaSyB_LJOYJL-84SMuxNB7LtRGhxEQLjswvy0&center=4.2105,101.9758&zoom=6&language=id&region=my"
-                />
+              <div className="relative w-full h-[520px] rounded-lg overflow-hidden border bg-gradient-to-br from-emerald-50 via-sky-50 to-cyan-50">
+                <div className="absolute inset-0 opacity-70 bg-[linear-gradient(to_right,#dbeafe_1px,transparent_1px),linear-gradient(to_bottom,#dbeafe_1px,transparent_1px)] bg-[size:28px_28px]" />
+                <div className="absolute left-4 top-4 z-10 rounded-md bg-white/85 px-3 py-2 text-xs text-muted-foreground shadow">
+                  Geotag PMI Malaysia (input manual) • klik titik untuk detail
+                </div>
+
+                {locations.map((location, index) => {
+                  const point = toGeoPosition(location.lat, location.lng, index);
+                  const isSelected = selectedLocationName === location.name;
+                  const pmiData = location.data.find(d => d.data_type === 'jumlah_pmi');
+
+                  return (
+                    <button
+                      key={location.name}
+                      type="button"
+                      onClick={() => setSelectedLocation(pmiData || location.data[0])}
+                      className={`absolute z-20 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 shadow transition-all ${isSelected ? 'h-5 w-5 border-primary bg-primary scale-125' : 'h-4 w-4 border-primary/80 bg-white hover:scale-110'}`}
+                      style={{ left: `${point.left}%`, top: `${point.top}%` }}
+                      title={`${location.name}${pmiData ? ` • ${pmiData.data_value?.toLocaleString('id-ID')} PMI` : ''}`}
+                    />
+                  );
+                })}
               </div>
 
               {/* Location Buttons */}
@@ -234,11 +329,70 @@ export default function DataInfographics() {
           </Card>
         </TabsContent>
 
+        <TabsContent value="stats" className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>Statistik PMI & Migrasi {selectedLocationName ? `• ${selectedLocationName}` : ''}</CardTitle>
+              <CardDescription>Berbasis input manual pada modul admin infografis per lokasi.</CardDescription>
+            </CardHeader>
+            <CardContent className="h-[360px]">
+              {migrationStatsData.length > 0 ? (
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={migrationStatsData}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="name" />
+                    <YAxis />
+                    <Tooltip formatter={(value: number) => value.toLocaleString('id-ID')} />
+                    <Bar dataKey="value" radius={[8, 8, 0, 0]}>
+                      {migrationStatsData.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={entry.fill} />
+                      ))}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              ) : (
+                <div className="h-full rounded-xl border border-dashed flex items-center justify-center text-sm text-muted-foreground">
+                  Belum ada data statistik untuk lokasi terpilih.
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="trend" className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>Peta Isu & Grafik Trend {selectedLocationName ? `• ${selectedLocationName}` : ''}</CardTitle>
+              <CardDescription>Trend kasus hukum, bantuan advokasi, dan total nilai data per periode.</CardDescription>
+            </CardHeader>
+            <CardContent className="h-[360px]">
+              {trendData.length > 0 ? (
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={trendData}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="month" />
+                    <YAxis />
+                    <Tooltip formatter={(value: number) => value.toLocaleString('id-ID')} />
+                    <Legend />
+                    <Line type="monotone" dataKey="kasus" stroke="#f97316" strokeWidth={2} name="Kasus Hukum" />
+                    <Line type="monotone" dataKey="advokasi" stroke="#16a34a" strokeWidth={2} name="Bantuan Advokasi" />
+                    <Line type="monotone" dataKey="total" stroke="#0f766e" strokeWidth={2} name="Total" />
+                  </LineChart>
+                </ResponsiveContainer>
+              ) : (
+                <div className="h-full rounded-xl border border-dashed flex items-center justify-center text-sm text-muted-foreground">
+                  Belum ada data trend untuk lokasi terpilih.
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
         <TabsContent value="infografis" className="space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
             {loading ? (
               Array(2).fill(0).map((_, i) => <Card key={i} className="animate-pulse bg-muted h-[400px]" />)
-            ) : infographics.filter(i => i.image_url).map((info) => (
+            ) : nuActivities.filter(i => i.image_url).map((info) => (
               <Card key={info.id} className="overflow-hidden shadow-lg border-primary/10">
                 <CardHeader className="bg-muted/30">
                   <div className="flex items-start justify-between gap-2 mb-2">
@@ -286,9 +440,9 @@ export default function DataInfographics() {
             ))}
           </div>
 
-          {infographics.length === 0 && !loading && (
+          {nuActivities.length === 0 && !loading && (
             <div className="py-20 text-center text-muted-foreground border-2 border-dashed rounded-xl">
-              Belum ada data infografis yang tersedia saat ini.
+              Belum ada infografis kegiatan NU untuk lokasi ini. Silakan isi manual di admin infografis dengan tag data_type seperti "kegiatan_nu".
             </div>
           )}
         </TabsContent>

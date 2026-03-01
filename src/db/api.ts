@@ -120,6 +120,17 @@ export interface UserAccount {
   created_at: string;
 }
 
+export interface ExternalNews {
+  id: string;
+  source_name: string;
+  source_link: string;
+  title: string;
+  excerpt: string | null;
+  image_url: string | null;
+  published_at: string | null;
+  created_at: string;
+}
+
 const defaultApiBaseUrl = (() => {
   if (typeof window === 'undefined') {
     return 'http://localhost/ANSORMALAYSIA/backend';
@@ -269,6 +280,13 @@ function normalizeUserAccount(user: any): UserAccount {
   return {
     ...user,
     id: String(user.id),
+  };
+}
+
+function normalizeExternalNews(item: any): ExternalNews {
+  return {
+    ...item,
+    id: String(item.id),
   };
 }
 
@@ -480,6 +498,23 @@ export const api = {
     },
     async delete(id: string) {
       await request(`/users/${id}`, { method: 'DELETE' });
+    },
+  },
+  externalNews: {
+    async listPublic(limit = 20) {
+      const data = await request<{ items: any[]; meta: { count: number } }>('/external-news/public', {
+        query: { limit },
+      });
+
+      return {
+        items: (data.items || []).map(normalizeExternalNews),
+        meta: data.meta,
+      };
+    },
+    async refresh() {
+      return request<{ ok: boolean; processed: number; updated_at: string }>('/external-news/refresh', {
+        method: 'POST',
+      });
     },
   },
   uploads: {
