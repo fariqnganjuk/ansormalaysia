@@ -58,6 +58,24 @@ function monthKey(dateText: string) {
   return d.toLocaleDateString('id-ID', { month: 'short', year: '2-digit' });
 }
 
+function getDataTypeLabel(type: string | null) {
+  switch (type) {
+    case 'jumlah_pmi': return 'Jumlah PMI';
+    case 'kasus_hukum': return 'Kasus Hukum';
+    case 'bantuan_advokasi': return 'Bantuan Advokasi';
+    default: return 'Data';
+  }
+}
+
+function getDataTypeIcon(type: string | null) {
+  switch (type) {
+    case 'jumlah_pmi': return <Users className="h-5 w-5" />;
+    case 'kasus_hukum': return <Scale className="h-5 w-5" />;
+    case 'bantuan_advokasi': return <HandHeart className="h-5 w-5" />;
+    default: return <TrendingUp className="h-5 w-5" />;
+  }
+}
+
 export default function DataInfographics() {
   const [infographics, setInfographics] = useState<Infographic[]>([]);
   const [loading, setLoading] = useState(true);
@@ -147,24 +165,6 @@ export default function DataInfographics() {
     const type = (item.data_type || '').toLowerCase();
     return type.includes('kegiatan') || title.includes('kegiatan') || title.includes('banom') || title.includes('nu') || desc.includes('kegiatan');
   });
-
-  const getDataTypeLabel = (type: string | null) => {
-    switch (type) {
-      case 'jumlah_pmi': return 'Jumlah PMI';
-      case 'kasus_hukum': return 'Kasus Hukum';
-      case 'bantuan_advokasi': return 'Bantuan Advokasi';
-      default: return 'Data';
-    }
-  };
-
-  const getDataTypeIcon = (type: string | null) => {
-    switch (type) {
-      case 'jumlah_pmi': return <Users className="h-5 w-5" />;
-      case 'kasus_hukum': return <Scale className="h-5 w-5" />;
-      case 'bantuan_advokasi': return <HandHeart className="h-5 w-5" />;
-      default: return <TrendingUp className="h-5 w-5" />;
-    }
-  };
 
   return (
     <div className="container mx-auto px-4 py-12 pb-24 max-w-6xl space-y-12">
