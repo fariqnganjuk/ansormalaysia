@@ -268,6 +268,16 @@ function list_external_news_public(int $limit): array
     }, $rows);
 }
 
+function external_news_latest_updated_at(): ?string
+{
+    ensure_external_news_table();
+    $value = db()->query('SELECT DATE_FORMAT(MAX(updated_at), "%Y-%m-%d %H:%i:%s") AS latest FROM external_news')->fetchColumn();
+    if (!is_string($value) || trim($value) === '') {
+        return null;
+    }
+    return $value;
+}
+
 try {
     if ($route === '') {
         respond(['name' => 'ANSOR Malaysia PHP API', 'ok' => true]);
@@ -790,11 +800,20 @@ try {
             $limit = max(1, min(100, $limit));
 
             $items = list_external_news_public($limit);
+            $autoRefreshed = false;
+
+            if ($items === []) {
+                refresh_external_news_feed();
+                $items = list_external_news_public($limit);
+                $autoRefreshed = true;
+            }
 
             respond([
                 'items' => $items,
                 'meta' => [
                     'count' => count($items),
+                    'auto_refreshed' => $autoRefreshed,
+                    'last_updated_at' => external_news_latest_updated_at(),
                 ],
             ]);
         }
