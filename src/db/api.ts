@@ -74,6 +74,26 @@ export interface ComplaintSubmission {
   declaration_agreed: boolean;
 }
 
+export interface ComplaintPublicSummary {
+  totals: {
+    total: number;
+    resolved: number;
+    in_progress: number;
+    pending: number;
+  };
+  by_type: Array<{
+    type: string;
+    total: number;
+    resolved: number;
+    in_progress: number;
+    pending: number;
+  }>;
+  by_year: Array<{
+    year: string;
+    count: number;
+  }>;
+}
+
 export interface Organization {
   id: string;
   name: string;
@@ -402,6 +422,9 @@ export const api = {
       });
 
       return normalizeComplaint(data);
+    },
+    async publicSummary() {
+      return request<ComplaintPublicSummary>('/complaints/public-summary');
     }
   },
   organizations: {

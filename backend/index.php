@@ -837,6 +837,136 @@ try {
     if ($segments[0] === 'complaints') {
         ensure_complaints_schema();
 
+        if ($method === 'GET' && count($segments) === 2 && $segments[1] === 'public-summary') {
+            $rows = db()->query('SELECT status, issue, complaint_types, created_at FROM complaints')->fetchAll();
+
+            $total = count($rows);
+            $resolved = 0;
+            $inProgress = 0;
+            $pending = 0;
+
+            $byType = [];
+            $byYear = [];
+
+            $normalizeType = static function (string $value): string {
+                $v = strtolower(trim($value));
+                if ($v === '') {
+                    return '';
+                }
+
+                if (str_contains($v, 'gaji') || str_contains($v, 'upah')) {
+                    return 'Gaji Tidak Dibayar';
+                }
+                if (str_contains($v, 'tahan') || str_contains($v, 'detensi') || str_contains($v, 'penjara')) {
+                    return 'Penahanan';
+                }
+                if (str_contains($v, 'dokumen') || str_contains($v, 'paspor') || str_contains($v, 'permit')) {
+                    return 'Dokumen/Imigrasi';
+                }
+                if (str_contains($v, 'kekerasan') || str_contains($v, 'aniaya')) {
+                    return 'Kekerasan';
+                }
+                if (str_contains($v, 'agen') || str_contains($v, 'penempatan')) {
+                    return 'Agen/Penempatan';
+                }
+                if (str_contains($v, 'kontrak')) {
+                    return 'Kontrak Kerja';
+                }
+
+                return ucwords($v);
+            };
+
+            foreach ($rows as $row) {
+                $status = (string) ($row['status'] ?? 'pending');
+                if ($status === 'resolved') {
+                    $resolved++;
+                } elseif ($status === 'in_progress') {
+                    $inProgress++;
+                } else {
+                    $pending++;
+                }
+
+                $year = substr((string) ($row['created_at'] ?? ''), 0, 4);
+                if ($year === '' || !ctype_digit($year)) {
+                    $year = gmdate('Y');
+                }
+                if (!isset($byYear[$year])) {
+                    $byYear[$year] = 0;
+                }
+                $byYear[$year]++;
+
+                $types = [];
+                if (is_string($row['complaint_types']) && trim($row['complaint_types']) !== '') {
+                    $decoded = json_decode((string) $row['complaint_types'], true);
+                    if (is_array($decoded)) {
+                        foreach ($decoded as $item) {
+                            if (is_string($item) && trim($item) !== '') {
+                                $types[] = $item;
+                            }
+                        }
+                    }
+                }
+
+                if ($types === []) {
+                    $issueText = trim((string) ($row['issue'] ?? ''));
+                    if ($issueText !== '') {
+                        $types[] = $issueText;
+                    }
+                }
+
+                if ($types === []) {
+                    $types[] = 'Lainnya';
+                }
+
+                foreach ($types as $rawType) {
+                    $typeLabel = $normalizeType((string) $rawType);
+                    if ($typeLabel === '') {
+                        $typeLabel = 'Lainnya';
+                    }
+
+                    if (!isset($byType[$typeLabel])) {
+                        $byType[$typeLabel] = [
+                            'type' => $typeLabel,
+                            'total' => 0,
+                            'resolved' => 0,
+                            'in_progress' => 0,
+                            'pending' => 0,
+                        ];
+                    }
+
+                    $byType[$typeLabel]['total']++;
+                    if ($status === 'resolved') {
+                        $byType[$typeLabel]['resolved']++;
+                    } elseif ($status === 'in_progress') {
+                        $byType[$typeLabel]['in_progress']++;
+                    } else {
+                        $byType[$typeLabel]['pending']++;
+                    }
+                }
+            }
+
+            ksort($byYear);
+            usort($byType, static function (array $a, array $b): int {
+                return $b['total'] <=> $a['total'];
+            });
+
+            $yearItems = [];
+            foreach ($byYear as $year => $count) {
+                $yearItems[] = ['year' => $year, 'count' => $count];
+            }
+
+            respond([
+                'totals' => [
+                    'total' => $total,
+                    'resolved' => $resolved,
+                    'in_progress' => $inProgress,
+                    'pending' => $pending,
+                ],
+                'by_type' => array_values($byType),
+                'by_year' => $yearItems,
+            ]);
+        }
+
         if ($method === 'GET' && count($segments) === 1) {
             require_auth();
             $stmt = db()->query('SELECT id, name, contact, issue, id_number, birth_date, malaysia_address, phone_whatsapp, email, employer_name, employer_address, job_type, work_duration, complaint_types, complaint_other, chronology, evidence_url, requested_action, declaration_name, declaration_date, declaration_signature, declaration_agreed, status, created_at FROM complaints ORDER BY created_at DESC');
